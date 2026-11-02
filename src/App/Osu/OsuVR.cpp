@@ -285,6 +285,7 @@ void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 	if (m_avatar)
 	{
 		avatar::TrackingFrame tracking;
+		tracking.headsetInUse = openvr->isHeadsetInUse();
 		tracking.head.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::Head, tracking.head.matrix);
 		tracking.leftHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, tracking.leftHand.matrix);
 		tracking.rightHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, tracking.rightHand.matrix);

@@ -44,6 +44,7 @@ int main()
             auto model = property(*system, device, ETrackedDeviceProperty_Prop_RenderModelName_String);
             auto role = system->GetControllerRoleForTrackedDeviceIndex(device);
             json item = {{"device", device}, {"class", system->GetTrackedDeviceClass(device)}, {"role", role},
+                {"activity", system->GetTrackedDeviceActivityLevel(device)},
                 {"model", property(*system, device, ETrackedDeviceProperty_Prop_ModelNumber_String)},
                 {"renderModel", model}, {"controllerType", property(*system, device, ETrackedDeviceProperty_Prop_ControllerType_String)},
                 {"inputProfile", property(*system, device, ETrackedDeviceProperty_Prop_InputProfilePath_String)}};

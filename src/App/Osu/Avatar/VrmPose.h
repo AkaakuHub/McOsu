@@ -13,7 +13,7 @@ namespace avatar
 {
 class VrmDocument;
 struct TrackedPose { bool valid = false; Matrix4 matrix; bool palmSurface = false; };
-struct TrackingFrame { TrackedPose head; TrackedPose leftHand; TrackedPose rightHand; };
+struct TrackingFrame { TrackedPose head; TrackedPose leftHand; TrackedPose rightHand; bool headsetInUse = true; };
 
 class VrmPose
 {
@@ -32,7 +32,7 @@ private:
 	std::vector<Matrix4> m_restWorld;
 	Vector3 m_restEyes;
 	bool m_calibrated = false;
-	float m_floorHeight = 0;
+	float m_scale = 0;
 	float m_bodyYaw = 0;
 	Vector3 m_previousHead;
 	std::chrono::steady_clock::time_point m_lastUpdate;

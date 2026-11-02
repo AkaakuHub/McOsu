@@ -40,6 +40,13 @@ void rotateBone(cgltf_node &node, Vector3 from, Vector3 to)
 Matrix4 orientation(Matrix4 matrix)
 {
 	matrix[12] = matrix[13] = matrix[14] = 0;
+	for (int column = 0; column < 3; ++column)
+	{
+		const auto axis = Vector3(matrix[column * 4], matrix[column * 4 + 1], matrix[column * 4 + 2]).normalize();
+		matrix[column * 4] = axis.x;
+		matrix[column * 4 + 1] = axis.y;
+		matrix[column * 4 + 2] = axis.z;
+	}
 	return matrix;
 }
 

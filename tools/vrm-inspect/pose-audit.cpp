@@ -38,6 +38,9 @@ int main(int argc, char **argv)
 		frame.head.valid = frame.leftHand.valid = frame.rightHand.valid = true;
 		frame.head.matrix.translate(0, 1.65f, 0);
 		pose.update(frame);
+		const float avatarScale = Vector3(pose.modelToTracking()[0], pose.modelToTracking()[1], pose.modelToTracking()[2]).length();
+		const auto calibrationOrigin = pose.modelToTracking() * Vector4(0, 0, 0, 1);
+		if (std::abs(calibrationOrigin.y) > 0.00001f) throw std::runtime_error("Avatar floor differs from tracking floor");
 		float maxEyeError = 0, maxHandError = 0, maxHandDirectionError = 0, maxForearmStep = 0;
 		Matrix4 previousForearms[2];
 		for (int step = 0; step < 360; ++step)
@@ -59,7 +62,7 @@ int main(int argc, char **argv)
 				{
 					Matrix4 turn;
 					turn.rotateY(180);
-					const auto offset = hand->matrix * turn * anchors[hand == &frame.leftHand ? 0 : 1];
+					const auto offset = hand->matrix * turn * (anchors[hand == &frame.leftHand ? 0 : 1] * avatarScale);
 					hand->matrix[12] += offset.x;
 					hand->matrix[13] += offset.y;
 					hand->matrix[14] += offset.z;
@@ -76,12 +79,13 @@ int main(int argc, char **argv)
 				const auto &hand = tracked.matrix;
 				Matrix4 turn;
 				turn.rotateY(180);
-				const auto offset = tracked.palmSurface ? hand * turn * anchors[side == "left" ? 0 : 1] : Vector3();
+				const auto offset = tracked.palmSurface ? hand * turn * (anchors[side == "left" ? 0 : 1] * avatarScale) : Vector3();
 				maxHandError = std::max(maxHandError,
 					(trackedBone(model, pose, side + "Hand") - Vector3(hand[12], hand[13], hand[14]) + offset).length());
-				const auto current = pose.modelToTracking()
+				auto current = pose.modelToTracking()
 					* avatar::orientation(avatar::world(model.scene().nodes[model.humanBones().at(side + "Hand")]))
 					* fingerDirections[sideIndex++];
+				current.normalize();
 				maxHandDirectionError = std::max(maxHandDirectionError,
 					(current - Vector3(-hand[8], -hand[9], -hand[10])).length());
 				const auto forearm = avatar::orientation(avatar::world(model.scene().nodes[model.humanBones().at(side + "LowerArm")]));
@@ -106,6 +110,19 @@ int main(int argc, char **argv)
 			<< " maxHandDirectionError=" << maxHandDirectionError << " maxForearmStepDegrees=" << maxForearmStep << '\n';
 		if (maxEyeError > 0.0001f || maxHandError > 0.001f || maxHandDirectionError > 0.001f || maxForearmStep > 20)
 			throw std::runtime_error("Tracking targets were missed");
+		const auto beforeStandby = trackedBone(model, pose, "head");
+		frame.headsetInUse = false;
+		frame.head.matrix.identity().translate(0.4f, 0.6f, 0.2f);
+		pose.update(frame);
+		if ((trackedBone(model, pose, "head") - beforeStandby).length() > 0.00001f)
+			throw std::runtime_error("Standby headset moved the avatar");
+		frame.headsetInUse = true;
+		frame.head.matrix.identity().translate(0.2f, 1.8f, 0.3f);
+		pose.update(frame);
+		const auto wornEyes = (trackedBone(model, pose, "leftEye") + trackedBone(model, pose, "rightEye")) * 0.5f;
+		if ((wornEyes - Vector3(0.2f, 1.8f, 0.3f)).length() > 0.00001f)
+			throw std::runtime_error("Worn headset did not recalibrate the eye position");
+		std::cout << "Standby pose freeze and wear calibration passed\n";
 	}
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
 }

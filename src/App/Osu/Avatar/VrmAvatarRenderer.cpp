@@ -58,10 +58,14 @@ VrmAvatarRenderer::~VrmAvatarRenderer() = default;
 
 void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 {
+	if (m_poseFrameTime == engine->getTime()) return;
+	m_poseFrameTime = engine->getTime();
 	auto frame = tracking;
+	frame.head.valid = frame.head.valid && frame.headsetInUse;
 	for (const auto side : {HandSide::Left, HandSide::Right})
 	{
 		auto &hand = side == HandSide::Left ? frame.leftHand : frame.rightHand;
+		if (!frame.headsetInUse) hand.valid = false;
 		if (!hand.valid) continue;
 		Matrix4 palm;
 		hand.valid = m_handTracking.tryGetPalmPose(side, hand.matrix, palm);
@@ -76,8 +80,8 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		| (static_cast<int>(m_handTracking.status(HandSide::Right)) << 6);
 	if (mask != m_trackingMask)
 	{
-		debugLog("VRM tracking: head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
-			frame.head.valid, frame.leftHand.valid, frame.rightHand.valid,
+		debugLog("VRM tracking: inUse=%i head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
+			frame.headsetInUse, frame.head.valid, frame.leftHand.valid, frame.rightHand.valid,
 			static_cast<int>(m_handTracking.status(HandSide::Left)), static_cast<int>(m_handTracking.status(HandSide::Right)),
 			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
 		m_trackingMask = mask;
