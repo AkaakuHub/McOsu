@@ -16,6 +16,7 @@ class OsuBeatmap;
 
 class Shader;
 class RenderTarget;
+namespace avatar { class VrmAvatarRenderer; }
 
 class OsuVRUIElement;
 class OsuVRUISlider;
@@ -72,6 +73,8 @@ private:
 	inline Vector2 getVirtualScreenSize() {return m_vVirtualScreenSize;}
 
 	void onScreenMatrixChange(UString oldValue, UString newValue);
+	void onAvatarChange(UString oldValue, UString newValue);
+	std::unique_ptr<avatar::VrmAvatarRenderer> m_avatar;
 	void onPlayfieldMatrixChange(UString oldValue, UString newValue);
 	void onMatrixResetClicked();
 	void onLayoutLockClicked();

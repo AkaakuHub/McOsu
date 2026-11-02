@@ -6,6 +6,8 @@
 //===============================================================================//
 
 #include "OsuVR.h"
+#include "Avatar/VrmAvatarRenderer.h"
+#include <exception>
 #include "Engine.h"
 #include "SoundEngine.h"
 #include "ResourceManager.h"
@@ -30,6 +32,7 @@
 #include "OsuVRUISlider.h"
 
 ConVar osu_vr_matrix_screen("osu_vr_matrix_screen");
+ConVar osu_vr_avatar("osu_vr_avatar", "", FCVAR_NONE);
 ConVar osu_vr_matrix_playfield("osu_vr_matrix_playfield");
 ConVar osu_vr_reset_matrices("osu_vr_reset_matrices");
 ConVar osu_vr_layout_lock("osu_vr_layout_lock", false, FCVAR_NONE);
@@ -75,6 +78,7 @@ OsuVR::OsuVR(Osu *osu)
 
 	// convar callbacks
 	osu_vr_matrix_screen.setCallback( fastdelegate::MakeDelegate(this, &OsuVR::onScreenMatrixChange) );
+	osu_vr_avatar.setCallback(fastdelegate::MakeDelegate(this, &OsuVR::onAvatarChange));
 	osu_vr_matrix_playfield.setCallback( fastdelegate::MakeDelegate(this, &OsuVR::onPlayfieldMatrixChange) );
 	osu_vr_reset_matrices.setCallback( fastdelegate::MakeDelegate(this, &OsuVR::resetMatrices) );
 
@@ -267,6 +271,8 @@ OsuVR::~OsuVR()
 
 void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 {
+	if (m_avatar && openvr->isSpectatorDraw())
+		m_avatar->draw(g, m_shaderGenericTextured, mvp);
 	// draw floor
 	if (osu_vr_draw_floor.getBool())
 	{
@@ -509,6 +515,20 @@ void OsuVR::drawVRCursors(Graphics *g, Matrix4 &mvp)
 		g->popTransform();
 	}
 	m_shaderTexturedLegacyGeneric->disable();
+}
+
+void OsuVR::onAvatarChange(UString oldValue, UString newValue)
+{
+	m_avatar.reset();
+	if (newValue.length() == 0) return;
+	try
+	{
+		m_avatar.reset(new avatar::VrmAvatarRenderer(engine->getGraphics(), newValue.toUtf8()));
+	}
+	catch (const std::exception &error)
+	{
+		engine->showMessageError("VRM Avatar", error.what());
+	}
 }
 
 void OsuVR::update()
