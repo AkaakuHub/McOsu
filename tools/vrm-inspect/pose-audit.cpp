@@ -2,6 +2,7 @@
 #include "VrmPose.h"
 #include "VrmGeometry.h"
 #include "VrmSkinning.h"
+#include "VrmTransforms.h"
 #include "cgltf.h"
 #include <cmath>
 #include <iostream>
@@ -22,11 +23,20 @@ int main(int argc, char **argv)
 	{
 		avatar::VrmDocument model(argv[1]);
 		avatar::VrmPose pose(model);
+		Vector3 fingerDirections[2];
+		int sideIndex = 0;
+		for (const std::string side : {"left", "right"})
+		{
+			const auto &hand = model.scene().nodes[model.humanBones().at(side + "Hand")];
+			const auto &finger = model.scene().nodes[model.humanBones().at(side + "MiddleProximal")];
+			fingerDirections[sideIndex++] = avatar::orientation(avatar::world(hand)).invert()
+				* (avatar::position(avatar::world(finger)) - avatar::position(avatar::world(hand))).normalize();
+		}
 		avatar::TrackingFrame frame;
 		frame.head.valid = frame.leftHand.valid = frame.rightHand.valid = true;
 		frame.head.matrix.translate(0, 1.65f, 0);
 		pose.update(frame);
-		float maxEyeError = 0, maxHandError = 0;
+		float maxEyeError = 0, maxHandError = 0, maxHandDirectionError = 0;
 		for (int step = 0; step < 90; ++step)
 		{
 			const float phase = step * 0.02f;
@@ -37,24 +47,33 @@ int main(int argc, char **argv)
 			frame.head.matrix = location * yaw * tilt;
 			for (auto *hand : {&frame.leftHand, &frame.rightHand})
 			{
-				Matrix4 relative;
+				Matrix4 relative, wrist;
 				relative.translate(hand == &frame.leftHand ? -0.25f : 0.25f, -0.35f, -0.25f);
-				hand->matrix = location * yaw * relative;
+				wrist.rotateZ(std::sin(phase) * 90);
+				hand->matrix = location * yaw * relative * wrist;
 			}
 			pose.update(frame);
 			const auto eyes = (trackedBone(model, pose, "leftEye") + trackedBone(model, pose, "rightEye")) * 0.5f;
 			const auto &head = frame.head.matrix;
 			maxEyeError = std::max(maxEyeError, (eyes - Vector3(head[12], head[13], head[14])).length());
+			sideIndex = 0;
 			for (const std::string side : {"left", "right"})
 			{
 				const auto &hand = side == "left" ? frame.leftHand.matrix : frame.rightHand.matrix;
 				maxHandError = std::max(maxHandError,
 					(trackedBone(model, pose, side + "Hand") - Vector3(hand[12], hand[13], hand[14])).length());
+				const auto current = pose.modelToTracking()
+					* avatar::orientation(avatar::world(model.scene().nodes[model.humanBones().at(side + "Hand")]))
+					* fingerDirections[sideIndex++];
+				maxHandDirectionError = std::max(maxHandDirectionError,
+					(current - Vector3(-hand[8], -hand[9], -hand[10])).length());
 			}
 			for (const auto &primitive : avatar::readGeometry(model.scene())) avatar::skinPositions(model.scene(), primitive);
 		}
-		std::cout << "frames=90 maxEyeError=" << maxEyeError << " maxHandError=" << maxHandError << '\n';
-		if (maxEyeError > 0.0001f || maxHandError > 0.001f) throw std::runtime_error("Tracking targets were missed");
+		std::cout << "frames=90 maxEyeError=" << maxEyeError << " maxHandError=" << maxHandError
+			<< " maxHandDirectionError=" << maxHandDirectionError << '\n';
+		if (maxEyeError > 0.0001f || maxHandError > 0.001f || maxHandDirectionError > 0.001f)
+			throw std::runtime_error("Tracking targets were missed");
 	}
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
 }

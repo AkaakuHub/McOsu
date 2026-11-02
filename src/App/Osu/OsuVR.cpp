@@ -29,6 +29,8 @@
 
 #include "OsuVRUIImageButton.h"
 #include "OsuVRUIImageCheckbox.h"
+#include <cstdlib>
+#include <cstring>
 #include "OsuVRUISlider.h"
 
 ConVar osu_vr_matrix_screen("osu_vr_matrix_screen");
@@ -260,7 +262,14 @@ OsuVR::OsuVR(Osu *osu)
 
 		// execute the vr config file (this then overwrites the matrices with the user settings if they exist)
 		Console::execConfigFile(OSUVR_CONFIG_FILE_NAME);
-		onAvatarChange("", osu_vr_avatar.getString());
+		if (const auto *avatarPath = std::getenv("MCOSU_AVATAR")) osu_vr_avatar.setValue(avatarPath);
+		else onAvatarChange("", osu_vr_avatar.getString());
+		const auto *spectator = std::getenv("MCOSU_AVATAR_SPECTATOR");
+		if (spectator && std::strcmp(spectator, "1") == 0)
+		{
+			convar->getConVarByName("vr_spectator_mode")->setValue(1);
+			convar->getConVarByName("vr_draw_hmd_to_window")->setValue(1);
+		}
 	}
 }
 

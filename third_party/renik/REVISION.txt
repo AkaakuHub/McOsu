@@ -1,0 +1,4 @@
+https://github.com/V-Sekai/renik
+9d6cbc9c1ea55f4b13e42fad3b4514a4ddc3266f
+renik_limb.gd: get_joint_axis pole offset, target position influence and wrist roll influence.
+Adapted for the McOsu VRM bone coordinates in VrmPoseArm.cpp.
