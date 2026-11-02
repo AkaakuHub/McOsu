@@ -21,6 +21,8 @@ struct BodyTrackerDevice
 struct BodyTrackingFrame
 {
     TrackedPose waist, leftFoot, rightFoot;
+    bool hasTrackingSpaceDelta = false;
+    Matrix4 trackingSpaceDelta;
     std::array<BodyTrackingStatus, 3> status = {{BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned}};
 };
 BodyTrackerRole bodyTrackerRole(const std::string &controllerType);

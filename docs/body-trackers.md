@@ -10,4 +10,6 @@ Each sample independently evaluates connections, role properties and pose validi
 
 The standing coordinate system and prediction API follow [Valve's GetDeviceToAbsoluteTrackingPose documentation](https://github.com/ValveSoftware/openvr/wiki/IVRSystem::GetDeviceToAbsoluteTrackingPose). Independent waist/foot target availability follows the approach visible in [Custom Avatars AvatarIK](https://github.com/nicoco007/BeatSaberCustomAvatars/blob/main/Source/CustomAvatar/Avatar/AvatarIK.cs). No source code was copied from Custom Avatars.
 
+Changes to the runtime's raw-to-standing transform produce `trackingSpaceDelta = newRawToStanding * inverse(previousRawToStanding)`. The caller applies this transform to stored standing-space contact points. The first sample, unavailable interfaces, changed interface pointers and invalid origin matrices reset this history. This describes changes of the calibrated standing origin; it cannot identify an independent discontinuity of raw tracking coordinates.
+
 The standalone `tools/body-tracking-tests` target tests assignment, partial loss, device removal, role changes, ambiguity, and explicit serial reservations using synthetic devices. It does not claim hardware tracker verification.

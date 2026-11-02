@@ -4,6 +4,15 @@
 
 namespace avatar
 {
+namespace
+{
+Matrix4 convert(const HmdMatrix34_t &m)
+{
+    return Matrix4(m.m[0][0], m.m[1][0], m.m[2][0], 0, m.m[0][1], m.m[1][1], m.m[2][1], 0,
+        m.m[0][2], m.m[1][2], m.m[2][2], 0, m.m[0][3], m.m[1][3], m.m[2][3], 1);
+}
+}
+
 bool bodyTrackerPoseUsable(bool connected, bool poseValid, bool runningNormally, const Matrix4 &matrix)
 {
     if (!connected || !poseValid || !runningNormally) return false;
@@ -55,6 +64,8 @@ struct OpenVRBodyTracking::Impl
     VR_IVRSystem_FnTable *system = nullptr;
     std::array<std::string, 3> bindings;
     std::vector<BodyTrackerDevice> devices;
+    Matrix4 rawToStanding;
+    bool hasRawToStanding = false;
 };
 
 OpenVRBodyTracking::OpenVRBodyTracking() : m_impl(new Impl()) {}
@@ -68,14 +79,32 @@ const std::vector<BodyTrackerDevice> &OpenVRBodyTracking::devices() const { retu
 BodyTrackingFrame OpenVRBodyTracking::sample(float predictionSeconds)
 {
     m_impl->devices.clear();
+    const auto previousSystem = m_impl->system;
     EVRInitError error = EVRInitError_VRInitError_None;
     m_impl->system = reinterpret_cast<VR_IVRSystem_FnTable *>(VR_GetGenericInterface("FnTable:IVRSystem_026", &error));
     if (error != EVRInitError_VRInitError_None || !m_impl->system)
     {
+        m_impl->system = nullptr;
+        m_impl->hasRawToStanding = false;
         BodyTrackingFrame unavailable;
         unavailable.status.fill(BodyTrackingStatus::InterfaceUnavailable);
         return unavailable;
     }
+    if (m_impl->system != previousSystem) m_impl->hasRawToStanding = false;
+    Matrix4 rawToStanding = convert(m_impl->system->GetRawZeroPoseToStandingAbsoluteTrackingPose());
+    const bool validOrigin = bodyTrackerPoseUsable(true, true, true, rawToStanding)
+        && std::fabs(rawToStanding.getDeterminant()) > 0.000001f;
+    Matrix4 delta;
+    bool hasDelta = false;
+    if (validOrigin && m_impl->hasRawToStanding)
+    {
+        delta = rawToStanding * m_impl->rawToStanding.invert();
+        for (int index = 0; index < 16; ++index)
+            if (std::fabs(delta[index] - (index % 5 == 0 ? 1.0f : 0.0f)) > 0.000001f) hasDelta = true;
+        hasDelta = hasDelta && bodyTrackerPoseUsable(true, true, true, delta);
+    }
+    m_impl->hasRawToStanding = validOrigin;
+    if (validOrigin) m_impl->rawToStanding = rawToStanding;
     std::array<TrackedDevicePose_t, 64> poses = {};
     m_impl->system->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseStanding,
         std::isfinite(predictionSeconds) ? predictionSeconds : 0, poses.data(), poses.size());
@@ -96,13 +125,15 @@ BodyTrackingFrame OpenVRBodyTracking::sample(float predictionSeconds)
         device.controllerType = property(ETrackedDeviceProperty_Prop_ControllerType_String);
         const auto &pose = poses[index];
         const auto &m = pose.mDeviceToAbsoluteTracking;
-        const Matrix4 matrix(m.m[0][0], m.m[1][0], m.m[2][0], 0, m.m[0][1], m.m[1][1], m.m[2][1], 0,
-            m.m[0][2], m.m[1][2], m.m[2][2], 0, m.m[0][3], m.m[1][3], m.m[2][3], 1);
+        const Matrix4 matrix = convert(m);
         device.pose.valid = bodyTrackerPoseUsable(device.connected, pose.bPoseIsValid,
             pose.eTrackingResult == ETrackingResult_TrackingResult_Running_OK, matrix);
         if (device.pose.valid) device.pose.matrix = matrix;
         m_impl->devices.push_back(device);
     }
-    return assignBodyTrackers(m_impl->devices, m_impl->bindings);
+    auto result = assignBodyTrackers(m_impl->devices, m_impl->bindings);
+    result.hasTrackingSpaceDelta = hasDelta;
+    if (hasDelta) result.trackingSpaceDelta = delta;
+    return result;
 }
 }
