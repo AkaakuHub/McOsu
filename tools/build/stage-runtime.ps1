@@ -34,7 +34,7 @@ $lines = @(
     "osu_vr_avatar $avatarPath"
     'vr_draw_hmd_to_window 1'
     'vr_spectator_mode 1'
-    'vr_spectator_camera_position 0 1.3 3'
+    'vr_spectator_camera_position 0 0.8 2'
     'vr_spectator_camera_rotation 180 0 0'
 )
 [System.IO.File]::WriteAllLines((Join-Path $configuration 'osuvr.cfg'), $lines, [System.Text.UTF8Encoding]::new($false))
