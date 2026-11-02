@@ -40,7 +40,7 @@ ConVar osu_vr_avatar("osu_vr_avatar", "", FCVAR_NONE);
 ConVar osu_vr_avatar_calibrate("osu_vr_avatar_calibrate");
 ConVar osu_vr_matrix_playfield("osu_vr_matrix_playfield");
 ConVar osu_vr_reset_matrices("osu_vr_reset_matrices");
-ConVar osu_vr_layout_lock("osu_vr_layout_lock", true, FCVAR_NONE);
+ConVar osu_vr_layout_lock("osu_vr_layout_lock", false, FCVAR_NONE);
 
 ConVar osu_vr_screen_scale("osu_vr_screen_scale", 1.64613f, FCVAR_NONE);
 ConVar osu_vr_playfield_scale("osu_vr_playfield_scale", 0.945593f, FCVAR_NONE);

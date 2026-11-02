@@ -48,6 +48,15 @@ int main()
                 {"model", property(*system, device, ETrackedDeviceProperty_Prop_ModelNumber_String)},
                 {"renderModel", model}, {"controllerType", property(*system, device, ETrackedDeviceProperty_Prop_ControllerType_String)},
                 {"inputProfile", property(*system, device, ETrackedDeviceProperty_Prop_InputProfilePath_String)}};
+            if (device == 0)
+            {
+                ETrackedPropertyError propertyError;
+                item["hasProximity"] = system->GetBoolTrackedDeviceProperty(device,
+                    ETrackedDeviceProperty_Prop_ContainsProximitySensor_Bool, &propertyError);
+                VRControllerState_t state = {};
+                item["proximityReadable"] = system->GetControllerState(device, &state, sizeof(state));
+                item["proximityPressed"] = (state.ulButtonPressed & (1ULL << 31)) != 0;
+            }
             if (role == ETrackedControllerRole_TrackedControllerRole_LeftHand || role == ETrackedControllerRole_TrackedControllerRole_RightHand)
             {
                 VRInputValueHandle_t path = 0;
