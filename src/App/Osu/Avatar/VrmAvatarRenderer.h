@@ -6,6 +6,7 @@
 #include "VrmPose.h"
 #include "VrmVisibility.h"
 #include "OpenVRHandTracking.h"
+#include "Spring/SpringRuntime.h"
 #include <memory>
 
 class Graphics;
@@ -22,13 +23,14 @@ public:
 	~VrmAvatarRenderer();
 	void draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson);
 	void updateTracking(const TrackingFrame &tracking);
-	void recalibrate() { m_pose.recalibrate(); }
+	void recalibrate() { m_pose.recalibrate(); m_springs.reset(); }
 	const Matrix4 &subjectTransform() const { return m_pose.modelToTracking(); }
 	float subjectHeight() const { return m_subjectHeight; }
 
 private:
 	VrmDocument m_document;
 	VrmPose m_pose;
+	SpringRuntime m_springs;
 	OpenVRHandTracking m_handTracking;
 	std::vector<Primitive> m_geometry;
 	std::vector<ViewIndices> m_viewIndices;

@@ -13,7 +13,7 @@
 namespace avatar
 {
 VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path)
-	: m_document(path), m_pose(m_document), m_geometry(readGeometry(m_document.scene()))
+	: m_document(path), m_pose(m_document), m_springs(m_document), m_geometry(readGeometry(m_document.scene()))
 {
 	m_shader.reset(graphics->createShaderFromSource(
 		"#version 110\nuniform mat4 matrix; varying vec2 uv; void main(){uv=gl_MultiTexCoord0.xy; gl_Position=matrix*gl_Vertex; gl_FrontColor=gl_Color;}",
@@ -87,6 +87,9 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		m_trackingMask = mask;
 	}
 	m_pose.update(frame);
+	if (frame.head.valid && frame.headsetInUse)
+		m_springs.update(static_cast<float>(engine->getFrameTime()), m_pose.modelToTracking());
+	else m_springs.reset();
 }
 
 void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson)
