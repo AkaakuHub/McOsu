@@ -26,7 +26,7 @@ struct Fixture
 		const std::string json = std::string("{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[0]}],")
 			+ "\"nodes\":[{\"children\":[1]},{\"children\":[2],\"translation\":[0,1,0]},{\"translation\":[0,1,0]}],"
 			+ "\"extensions\":{\"VRMC_vrm\":{\"specVersion\":\"1.0\",\"humanoid\":{\"humanBones\":{\"head\":{\"node\":1}}}},"
-			+ "\"VRMC_springBone\":{\"specVersion\":\"1.0\",\"colliders\":[{\"node\":0,\"shape\":{\"sphere\":{\"offset\":[0.15,1.9,0],\"radius\":0.2}}}],"
+			+ "\"VRMC_springBone\":{\"specVersion\":\"1.0\",\"colliders\":[{\"node\":0,\"shape\":{\"sphere\":{\"offset\":[0.15,1.9,0],\"radius\":0.2}}},{\"node\":0,\"shape\":{\"capsule\":{}}}],"
 			+ "\"colliderGroups\":[{\"colliders\":[0]}],\"springs\":[{"
 			+ (center ? "\"center\":0," : "") + (collision ? "\"colliderGroups\":[0]," : "")
 			+ "\"joints\":[{\"node\":1,\"hitRadius\":0.05,\"stiffness\":1,\"dragForce\":0.4,\"gravityDir\":[1,0,0],\"gravityPower\":"

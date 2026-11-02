@@ -59,7 +59,7 @@ SpringDefinition readSpringDefinition(const cgltf_data &scene)
 		const bool capsule = shape.contains("capsule");
 		const auto &data = shape.at(capsule ? "capsule" : "sphere");
 		collider.offset = data.contains("offset") ? vector(data.at("offset")) : Vector3();
-		collider.tail = capsule ? vector(data.at("tail")) : collider.offset;
+		collider.tail = capsule ? (data.contains("tail") ? vector(data.at("tail")) : Vector3()) : collider.offset;
 		collider.radius = nonnegative(data.value("radius", 0.0f));
 		result.colliders.push_back(collider);
 	}
