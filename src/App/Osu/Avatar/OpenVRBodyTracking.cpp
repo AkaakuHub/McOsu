@@ -92,6 +92,7 @@ BodyTrackingFrame OpenVRBodyTracking::sample(float predictionSeconds)
             return propertyError == ETrackedPropertyError_TrackedProp_Success ? std::string(value.data()) : std::string();
         };
         device.serial = property(ETrackedDeviceProperty_Prop_SerialNumber_String);
+        device.pose.deviceId = device.serial;
         device.controllerType = property(ETrackedDeviceProperty_Prop_ControllerType_String);
         const auto &pose = poses[index];
         const auto &m = pose.mDeviceToAbsoluteTracking;
