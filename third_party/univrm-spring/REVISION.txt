@@ -1,0 +1,4 @@
+https://github.com/vrm-c/UniVRM/tree/v0.131.4
+UniGLTF/Runtime/SpringBoneJobs/UpdateFastSpringBoneJob.cs
+Reference for the Verlet update, scaled radii and rotation application.
+The C++ implementation is in src/App/Osu/Avatar/Spring.
