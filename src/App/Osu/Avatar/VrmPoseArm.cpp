@@ -28,7 +28,7 @@ Vector3 elbowDirection(Vector3 target, Vector3 rest, Vector3 handForward, float 
 	Matrix4 roll;
 	roll.rotate((positional - mirror * 2.094395102f) * 180.0f / 3.141592654f, direction);
 	axis = roll * axis;
-	const auto base = solveLimb(Vector3(), target, axis.cross(direction), upper, lower);
+	const auto base = solveLimb(Vector3(), target, direction.cross(axis), upper, lower);
 	const auto forearm = (base.end - base.middle).normalize();
 	auto handRejection = handForward - direction * handForward.dot(direction);
 	auto lowerRejection = forearm - direction * forearm.dot(direction);
@@ -40,7 +40,7 @@ Vector3 elbowDirection(Vector3 target, Vector3 rest, Vector3 handForward, float 
 		wristRoll.rotate(amount * 180.0f / 3.141592654f, direction);
 		axis = wristRoll * axis;
 	}
-	return axis.cross(direction);
+	return direction.cross(axis);
 }
 
 Matrix4 twistAround(const Matrix4 &matrix, Vector3 axis, float radians)

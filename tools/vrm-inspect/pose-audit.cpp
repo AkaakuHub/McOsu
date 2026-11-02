@@ -67,6 +67,13 @@ int main(int argc, char **argv)
 					* fingerDirections[sideIndex++];
 				maxHandDirectionError = std::max(maxHandDirectionError,
 					(current - Vector3(-hand[8], -hand[9], -hand[10])).length());
+				if (step == 0)
+				{
+					const auto shoulder = trackedBone(model, pose, side + "UpperArm");
+					const auto elbow = trackedBone(model, pose, side + "LowerArm");
+					std::cout << side << " shoulderY=" << shoulder.y << " elbowY=" << elbow.y << '\n';
+					if (elbow.y > shoulder.y) throw std::runtime_error("Elbow bent upward with hands held forward");
+				}
 			}
 			for (const auto &primitive : avatar::readGeometry(model.scene())) avatar::skinPositions(model.scene(), primitive);
 		}
