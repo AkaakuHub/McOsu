@@ -290,7 +290,8 @@ void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 		tracking.leftHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, tracking.leftHand.matrix);
 		tracking.rightHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, tracking.rightHand.matrix);
 		m_avatar->updateTracking(tracking);
-		if (m_avatarSpectator) openvr->setSpectatorSubject(m_avatar->subjectTransform(), m_avatar->subjectHeight());
+		if (m_avatarSpectator && m_avatar->hasCalibration())
+			openvr->setSpectatorSubject(m_avatar->subjectTransform(), m_avatar->subjectHeight());
 		m_avatar->draw(g, mvp, !openvr->isSpectatorDraw());
 	}
 	// draw floor

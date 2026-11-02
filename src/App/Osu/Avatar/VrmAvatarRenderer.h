@@ -26,6 +26,7 @@ public:
 	void recalibrate() { m_pose.recalibrate(); m_springs.reset(); }
 	const Matrix4 &subjectTransform() const { return m_pose.modelToTracking(); }
 	float subjectHeight() const { return m_subjectHeight; }
+	bool hasCalibration() const { return m_pose.hasCalibration(); }
 
 private:
 	VrmDocument m_document;

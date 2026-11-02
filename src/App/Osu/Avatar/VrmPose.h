@@ -22,6 +22,7 @@ public:
 	void update(const TrackingFrame &tracking);
 	void recalibrate();
 	const Matrix4 &modelToTracking() const { return m_modelToTracking; }
+	bool hasCalibration() const { return m_scale > 0; }
 
 private:
 	cgltf_node &bone(const std::string &name);
