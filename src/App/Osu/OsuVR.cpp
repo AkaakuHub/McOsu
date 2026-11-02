@@ -258,6 +258,7 @@ OsuVR::OsuVR(Osu *osu)
 
 		// execute the vr config file (this then overwrites the matrices with the user settings if they exist)
 		Console::execConfigFile(OSUVR_CONFIG_FILE_NAME);
+		onAvatarChange("", osu_vr_avatar.getString());
 	}
 }
 
