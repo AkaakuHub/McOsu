@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <array>
 
 struct cgltf_node;
 
@@ -35,6 +36,8 @@ private:
 	float m_bodyYaw = 0;
 	Vector3 m_previousHead;
 	std::chrono::steady_clock::time_point m_lastUpdate;
+	std::array<float, 2> m_armTwist = {{0, 0}};
+	std::array<bool, 2> m_hasArmTwist = {{false, false}};
 	Matrix4 m_modelToTracking;
 };
 }

@@ -107,7 +107,13 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target)
 	{
 		currentUp.normalize();
 		desiredUp.normalize();
-		const float twist = std::atan2(forearmAxis.dot(currentUp.cross(desiredUp)), currentUp.dot(desiredUp));
+		const float wrapped = std::atan2(forearmAxis.dot(currentUp.cross(desiredUp)), currentUp.dot(desiredUp));
+		const std::size_t armIndex = side == "left" ? 0 : 1;
+		const float difference = wrapped - m_armTwist[armIndex];
+		const float twist = m_hasArmTwist[armIndex]
+			? m_armTwist[armIndex] + std::atan2(std::sin(difference), std::cos(difference)) : wrapped;
+		m_armTwist[armIndex] = twist;
+		m_hasArmTwist[armIndex] = true;
 		const auto upperWorld = world(upper);
 		const auto upperAxis = (position(lowerWorld) - position(upperWorld)).normalize();
 		setWorld(upper, twistAround(upperWorld, upperAxis, twist / 3));

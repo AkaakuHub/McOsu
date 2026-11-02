@@ -33,7 +33,11 @@ cgltf_node &VrmPose::bone(const std::string &name)
 	return m_document.scene().nodes[found->second];
 }
 
-void VrmPose::recalibrate() { m_calibrated = false; }
+void VrmPose::recalibrate()
+{
+	m_calibrated = false;
+	m_hasArmTwist.fill(false);
+}
 
 void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target, Vector3 bend)
 {
@@ -79,7 +83,9 @@ void VrmPose::update(const TrackingFrame &tracking)
 		}
 		const float desired = std::atan2(forward.x, forward.z);
 		const float difference = std::atan2(std::sin(desired - m_bodyYaw), std::cos(desired - m_bodyYaw));
-		const bool moving = deltaTime > 0 && (headPosition - m_previousHead).length() / deltaTime > 0.1f;
+		auto movement = headPosition - m_previousHead;
+		movement.y = 0;
+		const bool moving = deltaTime > 0 && movement.length() / deltaTime > 0.1f;
 		if (moving || std::abs(difference) > 35.0f * 3.14159265f / 180.0f)
 		{
 			const float amount = std::max(deltaTime * 120.0f * 3.14159265f / 180.0f,
