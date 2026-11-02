@@ -76,6 +76,15 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		m_pose.recalibrate();
 	}
 	const auto body = m_bodyTracking.sample();
+	std::vector<std::string> trackerDevices;
+	for (const auto &device : m_bodyTracking.devices())
+		trackerDevices.push_back(device.serial + ":" + device.controllerType);
+	if (trackerDevices != m_trackerDevices)
+	{
+		m_trackerDevices = trackerDevices;
+		for (const auto &device : m_bodyTracking.devices())
+			debugLog("VRM tracker device: serial=%s controllerType=%s\n", device.serial.c_str(), device.controllerType.c_str());
+	}
 	frame.waist = body.waist;
 	frame.leftFoot = body.leftFoot;
 	frame.rightFoot = body.rightFoot;
