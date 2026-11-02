@@ -15,6 +15,7 @@ class VrmDocument
 public:
 	explicit VrmDocument(const std::string &path);
 	~VrmDocument();
+	cgltf_data &scene();
 	const cgltf_data &scene() const;
 	const std::map<std::string, std::size_t> &humanBones() const;
 

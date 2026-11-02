@@ -1,6 +1,7 @@
 #include "VrmAvatarRenderer.h"
 #include "VrmSkinning.h"
 #include "cbase.h"
+#include "Engine.h"
 #include "Image.h"
 #include "Shader.h"
 #include "VertexArrayObject.h"
@@ -12,7 +13,7 @@
 namespace avatar
 {
 VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path)
-	: m_document(path), m_geometry(readGeometry(m_document.scene()))
+	: m_document(path), m_pose(m_document), m_geometry(readGeometry(m_document.scene()))
 {
 	m_shader.reset(graphics->createShaderFromSource(
 		"#version 110\nuniform mat4 matrix; varying vec2 uv; void main(){uv=gl_MultiTexCoord0.xy; gl_Position=matrix*gl_Vertex; gl_FrontColor=gl_Color;}",
@@ -46,12 +47,25 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 
 VrmAvatarRenderer::~VrmAvatarRenderer() = default;
 
+void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
+{
+	const int mask = (tracking.head.valid ? 1 : 0) | (tracking.leftHand.valid ? 2 : 0) | (tracking.rightHand.valid ? 4 : 0);
+	if (mask != m_trackingMask)
+	{
+		debugLog("VRM tracking: head=%i left=%i right=%i headPosition=(%.3f %.3f %.3f)\n",
+			tracking.head.valid, tracking.leftHand.valid, tracking.rightHand.valid,
+			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
+		m_trackingMask = mask;
+	}
+	m_pose.update(tracking);
+}
+
 void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection)
 {
 	const auto &scene = m_document.scene();
 	auto *shader = m_shader.get();
 	shader->enable();
-	auto matrix = viewProjection;
+	auto matrix = viewProjection * m_pose.modelToTracking();
 	shader->setUniformMatrix4fv("matrix", matrix);
 	for (const auto &primitive : m_geometry)
 	{

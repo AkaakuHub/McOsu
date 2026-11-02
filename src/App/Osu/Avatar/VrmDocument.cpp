@@ -41,6 +41,7 @@ VrmDocument::VrmDocument(const std::string &path)
 
 VrmDocument::~VrmDocument() = default;
 
+cgltf_data &VrmDocument::scene() { return *m_data; }
 const cgltf_data &VrmDocument::scene() const { return *m_data; }
 const std::map<std::string, std::size_t> &VrmDocument::humanBones() const { return m_humanBones; }
 }
