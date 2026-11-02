@@ -35,7 +35,7 @@ public:
     OpenVRBodyTracking();
     ~OpenVRBodyTracking();
     void setBindings(const std::string &waistSerial, const std::string &leftFootSerial, const std::string &rightFootSerial);
-    BodyTrackingFrame sample(float predictionSeconds = 0);
+    BodyTrackingFrame sample();
     const std::vector<BodyTrackerDevice> &devices() const;
 private:
     struct Impl;
