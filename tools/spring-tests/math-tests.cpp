@@ -23,8 +23,10 @@ int main()
 			avatar::SpringWorldCollider{Vector3(0.15f, 0.8f, 0), Vector3(0.15f, 1.0f, 0), 0.2f}})
 		{
 			const auto tail = avatar::collideSpringTail(head, Vector3(0.3f, 0.954f, 0), 1, 0.05f, shape, rest);
+			const auto pointTail = avatar::collideSpringTail(head, Vector3(0.3f, 0.954f, 0), 1, 0, shape, rest);
 			require(std::abs(tail.length() - 1) < 0.000001f, "Collision changed the bone length");
 			require(tail.x > 0.3f, "Collision did not push the tail away from the collider");
+			require(tail.x > pointTail.x, "Joint hit radius was omitted from collision");
 		}
 		const avatar::SpringWorldCollider collapsed = {current, current, 0.2f};
 		const auto coincident = avatar::collideSpringTail(head, current, 1, 0.05f, collapsed, rest);
