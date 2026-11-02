@@ -31,7 +31,7 @@ LimbSolution solveLimb(Vector3 start, Vector3 target, Vector3 bendDirection, flo
 
 Matrix4 rotationBetween(Vector3 from, Vector3 to)
 {
-	if (from.length() < 0.000001f || to.length() < 0.000001f)
+	if (from.length() == 0 || to.length() == 0)
 		throw std::runtime_error("Cannot rotate a zero-length bone");
 	from.normalize();
 	to.normalize();

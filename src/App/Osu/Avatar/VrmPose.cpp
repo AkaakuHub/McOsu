@@ -65,6 +65,7 @@ void VrmPose::update(const TrackingFrame &tracking)
 		return;
 	}
 	if (!tracking.head.valid) return;
+	if (m_scale == 0 && (!tracking.leftHand.valid || !tracking.rightHand.valid)) return;
 	const auto headPosition = position(tracking.head.matrix);
 	const auto now = std::chrono::steady_clock::now();
 	const float deltaTime = m_calibrated ? std::min(0.05f, std::chrono::duration<float>(now - m_lastUpdate).count()) : 0;
