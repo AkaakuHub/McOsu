@@ -35,6 +35,7 @@ int main(int argc, char **argv)
 				* (avatar::position(avatar::world(finger)) - avatar::position(avatar::world(hand))).normalize();
 		}
 		avatar::TrackingFrame frame;
+		frame.deltaTime = 1.0f / 60;
 		frame.head.valid = frame.leftHand.valid = frame.rightHand.valid = true;
 		frame.head.matrix.translate(0, 1.65f, 0);
 		pose.update(frame);
@@ -123,6 +124,36 @@ int main(int argc, char **argv)
 		if ((wornEyes - Vector3(0.2f, 1.8f, 0.3f)).length() > 0.00001f)
 			throw std::runtime_error("Worn headset did not recalibrate the eye position");
 		std::cout << "Standby pose freeze and wear calibration passed\n";
+		{
+			avatar::VrmDocument trackedModel(argv[1]);
+			avatar::VrmPose trackedPose(trackedModel);
+			avatar::TrackingFrame trackedFrame;
+			trackedFrame.deltaTime = 1.0f / 90;
+			trackedFrame.head.valid = trackedFrame.leftHand.valid = trackedFrame.rightHand.valid = true;
+			trackedFrame.head.matrix.translate(0, 1.65f, 0);
+			trackedFrame.leftHand.matrix.translate(-0.25f, 1.3f, -0.25f);
+			trackedFrame.rightHand.matrix.translate(0.25f, 1.3f, -0.25f);
+			trackedPose.update(trackedFrame);
+			trackedFrame.waist.valid = trackedFrame.leftFoot.valid = trackedFrame.rightFoot.valid = true;
+			trackedFrame.waist.deviceId = "waist";
+			trackedFrame.leftFoot.deviceId = "left";
+			trackedFrame.rightFoot.deviceId = "right";
+			trackedPose.update(trackedFrame);
+			const auto initialHip = trackedBone(trackedModel, trackedPose, "hips");
+			const auto initialFoot = trackedBone(trackedModel, trackedPose, "leftFoot");
+			trackedFrame.leftFoot.matrix.translate(0, 0.12f, 0.04f);
+			trackedFrame.waist.matrix.translate(0.025f, -0.05f, 0);
+			trackedPose.update(trackedFrame);
+			if ((trackedBone(trackedModel, trackedPose, "hips") - initialHip - Vector3(0.025f, -0.05f, 0)).length() > 0.0001f)
+				throw std::runtime_error("Measured waist pose was changed by head IK");
+			if ((trackedBone(trackedModel, trackedPose, "leftFoot") - initialFoot - Vector3(0, 0.12f, 0.04f)).length() > 0.001f)
+				throw std::runtime_error("Measured raised foot was not followed");
+			trackedFrame.leftFoot.valid = false;
+			trackedPose.update(trackedFrame);
+			if (!std::isfinite(trackedBone(trackedModel, trackedPose, "leftFoot").y))
+				throw std::runtime_error("Partial tracker loss produced invalid pose");
+			std::cout << "Waist, raised foot and partial tracker loss passed\n";
+		}
 		for (const std::string sample : {"front", "side", "up", "chest", "cross"})
 		{
 			avatar::VrmDocument sampleModel(argv[1]);
@@ -134,6 +165,7 @@ int main(int argc, char **argv)
 			{
 				const float roll = -120.0f + sampleStep * 2;
 				avatar::TrackingFrame sampleFrame;
+				sampleFrame.deltaTime = 1.0f / 60;
 				sampleFrame.head.valid = sampleFrame.leftHand.valid = sampleFrame.rightHand.valid = true;
 				sampleFrame.head.matrix.translate(0, 1.65f, 0);
 				for (const std::string side : {"left", "right"})
@@ -187,3 +219,4 @@ int main(int argc, char **argv)
 	}
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
 }
+

@@ -24,6 +24,8 @@ add_executable(vrm-pose-audit pose-audit.cpp
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmSkinning.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmPose.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmPoseArm.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmPoseBody.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/Locomotion/FootLocomotion.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmHandAnchors.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmTransforms.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/PoseMath.cpp"
@@ -34,3 +36,4 @@ target_include_directories(vrm-pose-audit PRIVATE
     "${MCOSU_ROOT}/third_party/cgltf"
     "${MCOSU_ROOT}/third_party/nlohmann"
     "${MCOSU_ROOT}/third_party/McEngine/McEngine/src/Util")
+

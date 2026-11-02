@@ -26,6 +26,16 @@ VrmPose::VrmPose(VrmDocument &document) : m_document(document)
 	m_restEyes = (position(world(bone("leftEye"))) + position(world(bone("rightEye")))) * 0.5f;
 	if (m_restEyes.y <= 0) throw std::runtime_error("Avatar eyes must be above the floor");
 	m_palmAnchors = measurePalmAnchors(document);
+	FootLocomotion::Config config;
+	config.restPelvis = position(world(bone("hips")));
+	for (int i = 0; i < 2; ++i)
+	{
+		const std::string side = i == 0 ? "left" : "right";
+		config.restFeet[i] = world(bone(side + "Foot"));
+		config.legLength[i] = (position(world(bone(side + "UpperLeg"))) - position(world(bone(side + "LowerLeg")))).length()
+			+ (position(world(bone(side + "LowerLeg"))) - position(config.restFeet[i])).length();
+	}
+	m_locomotion.configure(config);
 }
 
 cgltf_node &VrmPose::bone(const std::string &name)
@@ -40,6 +50,9 @@ void VrmPose::recalibrate()
 	m_calibrated = false;
 	m_scale = 0;
 	m_hasArmTwist.fill(false);
+	for (auto &binding : m_trackerBindings) binding.calibrated = false;
+	m_locomotion.reset();
+	m_hasFeet = false;
 }
 
 void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target, Vector3 bend)
@@ -67,9 +80,13 @@ void VrmPose::update(const TrackingFrame &tracking)
 	if (!tracking.head.valid) return;
 	if (m_scale == 0 && (!tracking.leftHand.valid || !tracking.rightHand.valid)) return;
 	const auto headPosition = position(tracking.head.matrix);
-	const auto now = std::chrono::steady_clock::now();
-	const float deltaTime = m_calibrated ? std::min(0.05f, std::chrono::duration<float>(now - m_lastUpdate).count()) : 0;
-	m_lastUpdate = now;
+	const float deltaTime = std::max(0.0f, std::min(0.05f, tracking.deltaTime));
+	if (tracking.hasTrackingSpaceDelta)
+	{
+		m_previousHead = point(tracking.trackingSpaceDelta, m_previousHead);
+		m_bodyYaw += std::atan2(tracking.trackingSpaceDelta[8], tracking.trackingSpaceDelta[10]);
+		for (auto &foot : m_feet) foot.pose = tracking.trackingSpaceDelta * foot.pose;
+	}
 	const float headYaw = std::atan2(-tracking.head.matrix[8], -tracking.head.matrix[10]);
 	if (!m_calibrated)
 	{
@@ -120,6 +137,17 @@ void VrmPose::update(const TrackingFrame &tracking)
 	scale.scale(m_scale);
 	turn.rotateY(180);
 	m_modelToTracking = translation * rotation * scale;
+	Matrix4 waistPose;
+	if (tracking.waist.valid)
+	{
+		waistPose = trackedBonePose(tracking.waist, 0, "hips");
+		const auto heading = orientation(waistPose) * orientation(m_restWorld[m_document.humanBones().at("hips")]).invert();
+		m_bodyYaw = std::atan2(heading[8], heading[10]);
+		rotation.identity().rotateY(m_bodyYaw * 180.0f / 3.14159265358979323846f);
+		const auto offset = rotation * (position(m_restWorld[m_document.humanBones().at("hips")]) * m_scale);
+		translation.identity().translate(waistPose[12] - offset.x, 0, waistPose[14] - offset.z);
+		m_modelToTracking = translation * rotation * scale;
+	}
 	const auto trackingToModel = Matrix4(m_modelToTracking).invert();
 	const auto headDelta = Matrix4(rotation).invert() * orientation(tracking.head.matrix) * turn;
 	auto &head = bone("head");
@@ -132,6 +160,16 @@ void VrmPose::update(const TrackingFrame &tracking)
 	hipsWorld[12] += shift.x;
 	hipsWorld[13] += shift.y;
 	hipsWorld[14] += shift.z;
+	if (tracking.waist.valid) hipsWorld = trackingToModel * waistPose;
+	else if (m_hasFeet)
+	{
+		const auto support = point(trackingToModel, (position(m_feet[0].pose) + position(m_feet[1].pose)) * 0.5f);
+		auto lean = Vector3(support.x - hipsWorld[12], 0, support.z - hipsWorld[14]) * 0.35f;
+		const float limit = m_restEyes.y * 0.08f;
+		if (lean.length() > limit) lean = lean.normalize() * limit;
+		hipsWorld[12] += lean.x;
+		hipsWorld[14] += lean.z;
+	}
 	setWorld(hips, hipsWorld);
 	auto headWorld = headDelta * restHead;
 	const auto headOrigin = position(world(head));
@@ -139,12 +177,38 @@ void VrmPose::update(const TrackingFrame &tracking)
 	headWorld[13] = headOrigin.y;
 	headWorld[14] = headOrigin.z;
 	setWorld(head, headWorld);
+	solveTorso(headDelta * restHead, desiredEyes, tracking.waist.valid);
+	FootLocomotion::Input locomotion;
+	locomotion.dt = deltaTime;
+	locomotion.modelToTracking = m_modelToTracking;
+	locomotion.head = tracking.head.matrix;
+	locomotion.hipsWorld = point(m_modelToTracking, position(world(hips)));
+	locomotion.balancePoint = headPosition * 0.45f + locomotion.hipsWorld * 0.55f;
+	for (int i = 0; i < 2; ++i)
+	{
+		const auto &hand = i == 0 ? tracking.leftHand : tracking.rightHand;
+		locomotion.hands[i] = hand.valid ? position(hand.matrix) : headPosition;
+		if (hand.valid) locomotion.balancePoint = locomotion.balancePoint * 0.96f + position(hand.matrix) * 0.04f;
+		const auto &foot = i == 0 ? tracking.leftFoot : tracking.rightFoot;
+		locomotion.trackedFeet[i].valid = foot.valid;
+		if (foot.valid) locomotion.trackedFeet[i].pose = trackedBonePose(foot, i + 1, i == 0 ? "leftFoot" : "rightFoot");
+	}
+	locomotion.pelvisTracked = tracking.waist.valid;
+	locomotion.hasTrackingSpaceDelta = tracking.hasTrackingSpaceDelta;
+	locomotion.trackingSpaceDelta = tracking.trackingSpaceDelta;
+	m_feet = m_locomotion.update(locomotion);
+	m_hasFeet = true;
 	for (const std::string side : {"left", "right"})
 	{
 		const auto &hand = side == "left" ? tracking.leftHand : tracking.rightHand;
 		if (hand.valid) moveArm(side, trackingToModel * hand.matrix, hand.palmSurface);
-		const auto foot = m_document.humanBones().at(side + "Foot");
-		moveLimb(side, false, position(m_restWorld[foot]), Vector3(0, 0, 1));
+		const auto footTarget = trackingToModel * m_feet[side == "left" ? 0 : 1].pose;
+		moveLimb(side, false, position(footTarget), Vector3(side == "left" ? -0.1f : 0.1f, 0, 1));
+		auto &foot = bone(side + "Foot");
+		auto footWorld = orientation(footTarget) * orientation(world(foot)).invert() * world(foot);
+		const auto footPosition = position(world(foot));
+		footWorld[12] = footPosition.x; footWorld[13] = footPosition.y; footWorld[14] = footPosition.z;
+		setWorld(foot, footWorld);
 	}
 }
 }

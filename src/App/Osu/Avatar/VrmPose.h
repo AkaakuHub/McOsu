@@ -4,7 +4,8 @@
 #include "Matrices.h"
 #include <vector>
 #include <string>
-#include <chrono>
+#include "TrackingTypes.h"
+#include "Locomotion/FootLocomotion.h"
 #include <array>
 
 struct cgltf_node;
@@ -12,8 +13,6 @@ struct cgltf_node;
 namespace avatar
 {
 class VrmDocument;
-struct TrackedPose { bool valid = false; Matrix4 matrix; bool palmSurface = false; };
-struct TrackingFrame { TrackedPose head; TrackedPose leftHand; TrackedPose rightHand; bool headsetInUse = true; };
 
 class VrmPose
 {
@@ -36,7 +35,13 @@ private:
 	float m_scale = 0;
 	float m_bodyYaw = 0;
 	Vector3 m_previousHead;
-	std::chrono::steady_clock::time_point m_lastUpdate;
+	struct TrackerBinding { bool calibrated = false; std::string deviceId; Matrix4 offset; };
+	std::array<TrackerBinding, 3> m_trackerBindings;
+	FootLocomotion m_locomotion;
+	std::array<FootLocomotion::Foot, 2> m_feet;
+	bool m_hasFeet = false;
+	void solveTorso(const Matrix4 &headPose, Vector3 eyeTarget, bool fixedPelvis);
+	Matrix4 trackedBonePose(const TrackedPose &tracked, int index, const std::string &name); 
 	std::array<float, 2> m_armTwist = {{0, 0}};
 	std::array<bool, 2> m_hasArmTwist = {{false, false}};
 	std::array<Vector3, 2> m_palmAnchors;
@@ -45,3 +50,4 @@ private:
 }
 
 #endif
+
