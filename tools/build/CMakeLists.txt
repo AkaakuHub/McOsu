@@ -23,4 +23,4 @@ list(REMOVE_DUPLICATES INCLUDE_DIRECTORIES)
 target_include_directories(McOsuAvatar PRIVATE ${INCLUDE_DIRECTORIES}
     "${MCOSU_ROOT}/third_party/cgltf" "${MCOSU_ROOT}/third_party/nlohmann")
 target_link_libraries(McOsuAvatar PRIVATE freetype opengl32 glew32 glu32 gdi32
-    bass bass_fx bassmix openvr_api comctl32 dwmapi comdlg32 psapi ws2_32 winmm pthread libjpeg)
+    bass bass_fx bassmix openvr_api comctl32 dwmapi comdlg32 psapi ws2_32 winmm pthread libjpeg atomic)
