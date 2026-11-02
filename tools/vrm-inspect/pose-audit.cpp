@@ -143,7 +143,11 @@ int main(int argc, char **argv)
 			const auto initialFoot = trackedBone(trackedModel, trackedPose, "leftFoot");
 			trackedFrame.leftFoot.matrix.translate(0, 0.12f, 0.04f);
 			trackedFrame.waist.matrix.translate(0.025f, -0.05f, 0);
+			trackedFrame.head.matrix[13] -= 0.1f;
 			trackedPose.update(trackedFrame);
+			const auto trackedEyes = (trackedBone(trackedModel, trackedPose, "leftEye") + trackedBone(trackedModel, trackedPose, "rightEye")) * 0.5f;
+			if ((trackedEyes - avatar::position(trackedFrame.head.matrix)).length() > 0.001f)
+				throw std::runtime_error("Torso did not reach a reachable measured head pose");
 			if ((trackedBone(trackedModel, trackedPose, "hips") - initialHip - Vector3(0.025f, -0.05f, 0)).length() > 0.0001f)
 				throw std::runtime_error("Measured waist pose was changed by head IK");
 			if ((trackedBone(trackedModel, trackedPose, "leftFoot") - initialFoot - Vector3(0, 0.12f, 0.04f)).length() > 0.001f)
@@ -153,6 +157,44 @@ int main(int argc, char **argv)
 			if (!std::isfinite(trackedBone(trackedModel, trackedPose, "leftFoot").y))
 				throw std::runtime_error("Partial tracker loss produced invalid pose");
 			std::cout << "Waist, raised foot and partial tracker loss passed\n";
+		}
+		{
+			avatar::VrmDocument plantedModel(argv[1]);
+			avatar::VrmPose plantedPose(plantedModel);
+			avatar::TrackingFrame plantedFrame;
+			plantedFrame.deltaTime = 1.0f / 90;
+			plantedFrame.head.valid = plantedFrame.leftHand.valid = plantedFrame.rightHand.valid = true;
+			plantedFrame.head.matrix.translate(0, 1.65f, 0);
+			plantedFrame.leftHand.matrix.translate(-0.25f, 1.3f, -0.25f);
+			plantedFrame.rightHand.matrix.translate(0.25f, 1.3f, -0.25f);
+			plantedPose.update(plantedFrame);
+			const auto plantedFoot = trackedBone(plantedModel, plantedPose, "leftFoot");
+			float slip = 0;
+			for (int step = 0; step < 180; ++step)
+			{
+				const float phase = step * 3.14159265f / 180;
+				plantedFrame.head.matrix[12] = std::sin(phase * 6) * 0.02f;
+				plantedFrame.head.matrix[13] = 1.65f - std::sin(phase) * 0.8f;
+				plantedPose.update(plantedFrame);
+				slip = std::max(slip, (trackedBone(plantedModel, plantedPose, "leftFoot") - plantedFoot).length());
+				if (trackedBone(plantedModel, plantedPose, "hips").y < 0)
+					throw std::runtime_error("Crouching put hips under the floor");
+			}
+			std::cout << "Crouch and lean maxFootSlip=" << slip << '\n';
+			if (slip > 0.005f) throw std::runtime_error("Crouch or head lean slid the planted foot");
+			const auto beforeRebase = trackedBone(plantedModel, plantedPose, "leftFoot");
+			plantedFrame.headsetInUse = false;
+			plantedFrame.hasTrackingSpaceDelta = true;
+			plantedFrame.trackingSpaceDelta.translate(1, 0, 0);
+			plantedPose.update(plantedFrame);
+			plantedFrame.headsetInUse = true;
+			plantedFrame.hasTrackingSpaceDelta = false;
+			plantedFrame.head.matrix[12] += 1;
+			plantedFrame.leftHand.matrix[12] += 1;
+			plantedFrame.rightHand.matrix[12] += 1;
+			plantedPose.update(plantedFrame);
+			if ((trackedBone(plantedModel, plantedPose, "leftFoot") - beforeRebase - Vector3(1, 0, 0)).length() > 0.005f)
+				throw std::runtime_error("Standby lost a tracking-space change");
 		}
 		for (const std::string sample : {"front", "side", "up", "chest", "cross"})
 		{

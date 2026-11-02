@@ -40,6 +40,8 @@ private:
 	FootLocomotion m_locomotion;
 	std::array<FootLocomotion::Foot, 2> m_feet;
 	bool m_hasFeet = false;
+	bool m_hasPendingSpaceDelta = false;
+	Matrix4 m_pendingSpaceDelta;
 	void solveTorso(const Matrix4 &headPose, Vector3 eyeTarget, bool fixedPelvis);
 	Matrix4 trackedBonePose(const TrackedPose &tracked, int index, const std::string &name); 
 	std::array<float, 2> m_armTwist = {{0, 0}};

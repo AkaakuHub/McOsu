@@ -69,8 +69,14 @@ void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target, Vector
 	rotateBone(lower, position(world(end)) - movedMiddle, solution.end - movedMiddle);
 }
 
-void VrmPose::update(const TrackingFrame &tracking)
+void VrmPose::update(const TrackingFrame &input)
 {
+	if (input.hasTrackingSpaceDelta)
+	{
+		m_pendingSpaceDelta = m_hasPendingSpaceDelta ? input.trackingSpaceDelta * m_pendingSpaceDelta : input.trackingSpaceDelta;
+		m_hasPendingSpaceDelta = true;
+	}
+	auto tracking = input;
 	if (!tracking.headsetInUse)
 	{
 		m_calibrated = false;
@@ -79,6 +85,9 @@ void VrmPose::update(const TrackingFrame &tracking)
 	}
 	if (!tracking.head.valid) return;
 	if (m_scale == 0 && (!tracking.leftHand.valid || !tracking.rightHand.valid)) return;
+	tracking.hasTrackingSpaceDelta = m_hasPendingSpaceDelta;
+	tracking.trackingSpaceDelta = m_pendingSpaceDelta;
+	m_hasPendingSpaceDelta = false;
 	const auto headPosition = position(tracking.head.matrix);
 	const float deltaTime = std::max(0.0f, std::min(0.05f, tracking.deltaTime));
 	if (tracking.hasTrackingSpaceDelta)
@@ -170,6 +179,8 @@ void VrmPose::update(const TrackingFrame &tracking)
 		hipsWorld[12] += lean.x;
 		hipsWorld[14] += lean.z;
 	}
+	if (!tracking.waist.valid)
+		hipsWorld[13] = std::max(hipsWorld[13], position(m_restWorld[m_document.humanBones().at("hips")]).y * 0.15f);
 	setWorld(hips, hipsWorld);
 	auto headWorld = headDelta * restHead;
 	const auto headOrigin = position(world(head));
