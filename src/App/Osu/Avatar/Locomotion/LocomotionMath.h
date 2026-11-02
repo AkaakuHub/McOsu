@@ -23,6 +23,18 @@ inline Matrix4 rigid(Matrix4 m)
 	}
 	return m;
 }
+inline Vector3 constrainLanding(Vector3 start, Vector3 target, Vector3 support, Vector3 outward, float spacing, float reach)
+{
+	Vector3 delta=planar(target-start);
+	const float required=spacing-planar(start-support).dot(outward);
+	const float along=clamp(std::max(delta.dot(outward),required),-reach,reach);
+	Vector3 lateral=delta-outward*delta.dot(outward);
+	const float available=std::sqrt(std::max(0.f,reach*reach-along*along));
+	if (lateral.length()>available) lateral*=available/lateral.length();
+	Vector3 result=start+outward*along+lateral;
+	result.y=target.y;
+	return result;
+}
 struct Quaternion
 {
 	float x, y, z, w;

@@ -14,10 +14,11 @@ struct Scene
 {
 	FootLocomotion solver;
 	FootLocomotion::Input input;
-	Scene(float hz=90)
+	Scene(float hz=90, bool reversed=false)
 	{
 		FootLocomotion::Config config;
 		config.restFeet[0].translate(-.12f,.06f,0); config.restFeet[1].translate(.12f,.06f,0);
+		if(reversed) std::swap(config.restFeet[0],config.restFeet[1]);
 		config.restPelvis=Vector3(0,.95f,0); config.legLength={{.95f,.95f}}; solver.configure(config);
 		input.dt=1/hz; input.hipsWorld=Vector3(0,.95f,0); input.balancePoint=Vector3(0,0,0);
 		input.head.translate(0,1.65f,0); input.hands={{Vector3(-.4f,1,0),Vector3(.4f,1,0)}};
@@ -94,8 +95,35 @@ void movingPlatform()
 	const auto after=s.update();
 	for(int i=0;i<2;++i) require(near(position(after[i].pose),delta*position(before[i].pose)+position(delta)),"platform delta did not transform active step");
 	s.input.hasTrackingSpaceDelta=false; s.input.dt=1/90.f;
-	for(int i=0;i<180;++i) s.update();
+	for(int i=0;i<450;++i) s.update();
 	const auto &feet=s.update(); for(const auto &foot:feet) require(std::abs(foot.pose[13]-.36f)<.001f,"platform floor height not preserved");
+}
+void landingConstraints(bool reversed, bool turn)
+{
+	Scene s(90,reversed); auto previous=s.update(); int landings=0;
+	std::array<Vector3,2> starts={{position(previous[0].pose),position(previous[1].pose)}};
+	for(int frame=0;frame<900;++frame)
+	{
+		float x=turn ? 0 : std::min(.8f,frame/90.f*.25f);
+		s.input.hipsWorld.x=x; s.input.balancePoint.x=x;
+		s.input.modelToTracking=rotation(turn ? std::min(3.14f,frame/90.f*.7f) : 0);
+		const auto current=s.update();
+		for(int foot=0;foot<2;++foot)
+		{
+			if(current[foot].stepping&&!previous[foot].stepping) starts[foot]=position(previous[foot].pose);
+			if(!current[foot].stepping&&previous[foot].stepping)
+			{
+				++landings;
+				Vector3 across=rotation(yaw(current[foot].pose))*Vector3(reversed ? -1.f : 1.f,0,0);
+				Vector3 outward=across*(foot==0 ? -1.f : 1.f);
+				float spacing=planar(position(current[foot].pose)-position(current[1-foot].pose)).dot(outward);
+				require(spacing>=.119f,"landing crossed or crowded support foot");
+				require(planar(position(current[foot].pose)-starts[foot]).length()<=.761f,"landing exceeded maximum step reach");
+			}
+		}
+		previous=current;
+	}
+	require(landings>=2,"landing constraint scenario did not step");
 }
 void rebase()
 {
@@ -113,6 +141,8 @@ int main()
 	try
 	{
 		stationary(); turning(); trackers(); rebase(); movingPlatform();
+		landingConstraints(false,false); landingConstraints(true,false);
+		landingConstraints(false,true); landingConstraints(true,true);
 		Vector3 p30=walking(30),p60=walking(60),p90=walking(90);
 		require(near(p30,p60,.08f)&&near(p60,p90,.08f),"frame rate changed walking result");
 		std::cout<<"locomotion tests passed\n"; return EXIT_SUCCESS;

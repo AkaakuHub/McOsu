@@ -126,6 +126,15 @@ const std::array<FootLocomotion::Foot, 2> &FootLocomotion::update(const Input &i
 			Vector3 prediction=planar(meanVelocity)*.08f;
 			if (prediction.length()>leg*.2f) prediction*=leg*.2f/prediction.length();
 			Vector3 p=position(step.end)+prediction;
+			Vector3 across=planar(position(m_config.restFeet[1])-position(m_config.restFeet[0]));
+			const float width=across.length()*scale;
+			if (width>leg*.001f)
+			{
+				across=targetBody*(across/across.length());
+				const Vector3 outward=across*(next==0 ? -1.f : 1.f);
+				p=constrainLanding(position(step.start),p,position(m_feet[1-next].pose),outward,
+					clamp(width*.5f,leg*.06f,leg*.22f),leg*.8f);
+			}
 			position(step.end,p);
 			const float distance=(position(step.end)-position(step.start)).length();
 			step.height=std::min(leg*.08f,distance*.25f);
