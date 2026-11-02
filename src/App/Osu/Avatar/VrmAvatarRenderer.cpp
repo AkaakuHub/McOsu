@@ -2,6 +2,7 @@
 #include "VrmSkinning.h"
 #include "cbase.h"
 #include "Engine.h"
+#include "ConVar.h"
 #include "Image.h"
 #include "Shader.h"
 #include "VertexArrayObject.h"
@@ -9,6 +10,10 @@
 #include <cstring>
 #include <stdexcept>
 #include <algorithm>
+
+ConVar osu_vr_avatar_waist_tracker("osu_vr_avatar_waist_tracker", "", FCVAR_NONE);
+ConVar osu_vr_avatar_left_foot_tracker("osu_vr_avatar_left_foot_tracker", "", FCVAR_NONE);
+ConVar osu_vr_avatar_right_foot_tracker("osu_vr_avatar_right_foot_tracker", "", FCVAR_NONE);
 
 namespace avatar
 {
@@ -61,6 +66,19 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	if (m_poseFrameTime == engine->getTime()) return;
 	m_poseFrameTime = engine->getTime();
 	auto frame = tracking;
+	frame.deltaTime = static_cast<float>(engine->getFrameTime());
+	const std::array<std::string, 3> bindings = {{osu_vr_avatar_waist_tracker.getString().toUtf8(),
+		osu_vr_avatar_left_foot_tracker.getString().toUtf8(), osu_vr_avatar_right_foot_tracker.getString().toUtf8()}};
+	if (bindings != m_trackerBindings)
+	{
+		m_trackerBindings = bindings;
+		m_bodyTracking.setBindings(bindings[0], bindings[1], bindings[2]);
+		m_pose.recalibrate();
+	}
+	const auto body = m_bodyTracking.sample();
+	frame.waist = body.waist;
+	frame.leftFoot = body.leftFoot;
+	frame.rightFoot = body.rightFoot;
 	frame.head.valid = frame.head.valid && frame.headsetInUse;
 	for (const auto side : {HandSide::Left, HandSide::Right})
 	{
@@ -77,7 +95,9 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	}
 	const int mask = (frame.head.valid ? 1 : 0) | (frame.leftHand.valid ? 2 : 0) | (frame.rightHand.valid ? 4 : 0)
 		| (static_cast<int>(m_handTracking.status(HandSide::Left)) << 3)
-		| (static_cast<int>(m_handTracking.status(HandSide::Right)) << 6);
+		| (static_cast<int>(m_handTracking.status(HandSide::Right)) << 6)
+		| (static_cast<int>(body.status[0]) << 9) | (static_cast<int>(body.status[1]) << 12)
+		| (static_cast<int>(body.status[2]) << 15);
 	if (mask != m_trackingMask)
 	{
 		debugLog("VRM tracking: inUse=%i head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
@@ -85,6 +105,9 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			static_cast<int>(m_handTracking.status(HandSide::Left)), static_cast<int>(m_handTracking.status(HandSide::Right)),
 			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
 		m_trackingMask = mask;
+		debugLog("VRM body tracking: waist=%i leftFoot=%i rightFoot=%i status=(%i %i %i)\n",
+			frame.waist.valid, frame.leftFoot.valid, frame.rightFoot.valid,
+			static_cast<int>(body.status[0]), static_cast<int>(body.status[1]), static_cast<int>(body.status[2]));
 	}
 	m_pose.update(frame);
 	if (frame.head.valid && frame.headsetInUse)

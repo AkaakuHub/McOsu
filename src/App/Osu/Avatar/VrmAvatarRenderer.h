@@ -6,6 +6,7 @@
 #include "VrmPose.h"
 #include "VrmVisibility.h"
 #include "OpenVRHandTracking.h"
+#include "OpenVRBodyTracking.h"
 #include "Spring/SpringRuntime.h"
 #include <memory>
 
@@ -33,6 +34,8 @@ private:
 	VrmPose m_pose;
 	SpringRuntime m_springs;
 	OpenVRHandTracking m_handTracking;
+	OpenVRBodyTracking m_bodyTracking;
+	std::array<std::string, 3> m_trackerBindings;
 	std::vector<Primitive> m_geometry;
 	std::vector<ViewIndices> m_viewIndices;
 	std::vector<std::unique_ptr<Image>> m_images;
