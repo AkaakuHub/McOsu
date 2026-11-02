@@ -51,6 +51,8 @@ OpenVRHandTracking::OpenVRHandTracking() : m_impl(new Impl())
     if (error != EVRInitError_VRInitError_None) m_impl->models = nullptr;
     m_impl->input = reinterpret_cast<VR_IVRInput_FnTable *>(VR_GetGenericInterface("FnTable:IVRInput_011", &error));
     if (error != EVRInitError_VRInitError_None) m_impl->input = nullptr;
+    if (m_impl->system && m_impl->models && m_impl->input)
+        m_impl->status.fill(HandTrackingStatus::DeviceDisconnected);
 }
 
 OpenVRHandTracking::~OpenVRHandTracking() = default;
