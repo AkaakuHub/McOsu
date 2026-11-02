@@ -12,3 +12,5 @@ To connect an existing staged executable to the installed profile:
 ```
 
 The launcher supplies `MCOSU_AVATAR` and `MCOSU_AVATAR_SPECTATOR` only to the child process. Avatar selection is separate from the shared user configuration. The installed `override.cfg` also retains the user's existing database version setting, so it is loaded before the song database instead of forcing a separate raw song scan.
+
+Standard output and errors go to `tracking.log` and `tracking-error.log` in the staged runtime directory. Launching replaces these diagnostic logs; it does not place logs in the installed profile.

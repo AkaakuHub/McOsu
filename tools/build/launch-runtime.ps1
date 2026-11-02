@@ -9,12 +9,17 @@ $executable = Join-Path $runtime 'McOsuAvatar.exe'
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) { throw 'Avatar executable is missing' }
 if (-not (Test-Path -LiteralPath $avatar -PathType Leaf)) { throw 'Avatar is missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $profile 'cfg') -PathType Container)) { throw 'Shared profile is missing' }
-$start = [System.Diagnostics.ProcessStartInfo]::new()
-$start.FileName = $executable
-$start.WorkingDirectory = $profile
-$start.UseShellExecute = $false
-$start.CreateNoWindow = $true
-$start.EnvironmentVariables['MCOSU_AVATAR'] = $avatar
-$start.EnvironmentVariables['MCOSU_AVATAR_SPECTATOR'] = $(if ($settings.spectator) { '1' } else { '0' })
-$process = [System.Diagnostics.Process]::Start($start)
-Write-Output $process.Id
+$previousAvatar = $env:MCOSU_AVATAR
+$previousSpectator = $env:MCOSU_AVATAR_SPECTATOR
+try {
+    $env:MCOSU_AVATAR = $avatar
+    $env:MCOSU_AVATAR_SPECTATOR = $(if ($settings.spectator) { '1' } else { '0' })
+    $process = Start-Process -FilePath $executable -WorkingDirectory $profile -PassThru `
+        -RedirectStandardOutput (Join-Path $runtime 'tracking.log') `
+        -RedirectStandardError (Join-Path $runtime 'tracking-error.log')
+    Write-Output $process.Id
+}
+finally {
+    $env:MCOSU_AVATAR = $previousAvatar
+    $env:MCOSU_AVATAR_SPECTATOR = $previousSpectator
+}
