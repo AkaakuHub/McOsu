@@ -18,7 +18,9 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 	{
 		const auto &source = scene.images[index];
 		if (!source.buffer_view || !source.mime_type || std::strcmp(source.mime_type, "image/png") != 0)
-			throw std::runtime_error("Avatar images must be embedded PNGs");
+			throw std::runtime_error("Invalid avatar image " + std::to_string(index)
+				+ ": mime=" + (source.mime_type ? source.mime_type : "missing")
+				+ ", buffer=" + (source.buffer_view ? "present" : "missing"));
 		const auto *bytes = cgltf_buffer_view_data(source.buffer_view);
 		if (!bytes) throw std::runtime_error("Avatar image buffer is missing");
 		std::unique_ptr<Image> image(graphics->createImage(1, 1, false, false));

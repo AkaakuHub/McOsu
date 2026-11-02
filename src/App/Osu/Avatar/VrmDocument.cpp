@@ -19,6 +19,8 @@ VrmDocument::VrmDocument(const std::string &path)
 	if (cgltf_parse_file(&options, path.c_str(), &parsed) != cgltf_result_success)
 		throw std::runtime_error("Cannot parse VRM: " + path);
 	m_data.reset(parsed);
+	for (std::size_t index = 0; index < parsed->images_count; ++index)
+		if (parsed->images[index].mime_type) cgltf_decode_string(parsed->images[index].mime_type);
 	if (parsed->file_type != cgltf_file_type_glb)
 		throw std::runtime_error("VRM must use the GLB container");
 	if (cgltf_load_buffers(&options, parsed, path.c_str()) != cgltf_result_success
