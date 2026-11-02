@@ -1,0 +1,3 @@
+[submodule "third_party/McEngine"]
+	path = third_party/McEngine
+	url = https://github.com/AkaakuHub/McEngine.git
