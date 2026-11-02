@@ -17,13 +17,14 @@ class VrmAvatarRenderer
 public:
 	VrmAvatarRenderer(Graphics *graphics, const std::string &path);
 	~VrmAvatarRenderer();
-	void draw(Graphics *graphics, Shader *shader, const Matrix4 &viewProjection);
+	void draw(Graphics *graphics, const Matrix4 &viewProjection);
 
 private:
 	VrmDocument m_document;
 	std::vector<Primitive> m_geometry;
 	std::vector<std::unique_ptr<Image>> m_images;
 	std::unique_ptr<Image> m_white;
+	std::unique_ptr<Shader> m_shader;
 };
 }
 

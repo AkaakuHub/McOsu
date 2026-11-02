@@ -7,13 +7,23 @@
 #include "cgltf.h"
 #include <cstring>
 #include <stdexcept>
+#include <algorithm>
 
 namespace avatar
 {
 VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path)
 	: m_document(path), m_geometry(readGeometry(m_document.scene()))
 {
+	m_shader.reset(graphics->createShaderFromSource(
+		"#version 110\nuniform mat4 matrix; varying vec2 uv; void main(){uv=gl_MultiTexCoord0.xy; gl_Position=matrix*gl_Vertex; gl_FrontColor=gl_Color;}",
+		"#version 110\nuniform sampler2D mytexture; uniform int alphaMode; uniform float alphaCutoff; varying vec2 uv; void main(){vec4 color=texture2D(mytexture,uv)*gl_Color; if(alphaMode==1 && color.a<alphaCutoff) discard; if(alphaMode!=2) color.a=1.0; gl_FragColor=color;}"));
+	m_shader->load();
+	if (!m_shader->isReady()) throw std::runtime_error("Avatar shader compilation failed");
 	const auto &scene = m_document.scene();
+	std::stable_sort(m_geometry.begin(), m_geometry.end(), [&scene](const Primitive &left, const Primitive &right) {
+		return (scene.materials[left.material].alpha_mode == cgltf_alpha_mode_blend)
+			< (scene.materials[right.material].alpha_mode == cgltf_alpha_mode_blend);
+	});
 	for (std::size_t index = 0; index < scene.images_count; ++index)
 	{
 		const auto &source = scene.images[index];
@@ -36,15 +46,18 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 
 VrmAvatarRenderer::~VrmAvatarRenderer() = default;
 
-void VrmAvatarRenderer::draw(Graphics *graphics, Shader *shader, const Matrix4 &viewProjection)
+void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection)
 {
 	const auto &scene = m_document.scene();
+	auto *shader = m_shader.get();
 	shader->enable();
 	auto matrix = viewProjection;
 	shader->setUniformMatrix4fv("matrix", matrix);
 	for (const auto &primitive : m_geometry)
 	{
 		const auto &material = scene.materials[primitive.material];
+		shader->setUniform1i("alphaMode", static_cast<int>(material.alpha_mode));
+		shader->setUniform1f("alphaCutoff", material.alpha_cutoff);
 		const auto &base = material.pbr_metallic_roughness;
 		auto *image = m_white.get();
 		if (base.base_color_texture.texture)

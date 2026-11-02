@@ -273,7 +273,7 @@ OsuVR::~OsuVR()
 void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 {
 	if (m_avatar && openvr->isSpectatorDraw())
-		m_avatar->draw(g, m_shaderGenericTextured, mvp);
+		m_avatar->draw(g, mvp);
 	// draw floor
 	if (osu_vr_draw_floor.getBool())
 	{
