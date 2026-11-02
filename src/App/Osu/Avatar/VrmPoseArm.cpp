@@ -35,7 +35,7 @@ Vector3 elbowDirection(Vector3 target, Vector3 rest, Vector3 handForward, float 
 	if (handRejection.length() > 0.0001f && lowerRejection.length() > 0.0001f)
 	{
 		const float amount = angle(handRejection, lowerRejection) * 0.33f
-			* std::abs(handForward.cross(forearm).dot(direction)) * -mirror;
+			* std::abs(handForward.cross(forearm).dot(direction)) * mirror;
 		Matrix4 wristRoll;
 		wristRoll.rotate(amount * 180.0f / 3.141592654f, direction);
 		axis = wristRoll * axis;
@@ -100,8 +100,11 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	const auto handWorld = world(hand);
 	const auto forearmAxis = (position(handWorld) - position(lowerWorld)).normalize();
 	const auto bindUp = orientation(restHand).invert() * palmUp.normalize();
+	const auto bindForward = orientation(restHand).invert() * Vector3(fingerForward).normalize();
 	auto currentUp = orientation(handWorld) * bindUp;
 	auto desiredUp = desiredRotation * bindUp;
+	currentUp = rotationBetween(orientation(handWorld) * bindForward, forearmAxis) * currentUp;
+	desiredUp = rotationBetween(desiredRotation * bindForward, forearmAxis) * desiredUp;
 	currentUp -= forearmAxis * currentUp.dot(forearmAxis);
 	desiredUp -= forearmAxis * desiredUp.dot(forearmAxis);
 	if (currentUp.length() > 0.0001f && desiredUp.length() > 0.0001f)

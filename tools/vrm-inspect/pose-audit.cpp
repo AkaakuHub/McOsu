@@ -123,6 +123,67 @@ int main(int argc, char **argv)
 		if ((wornEyes - Vector3(0.2f, 1.8f, 0.3f)).length() > 0.00001f)
 			throw std::runtime_error("Worn headset did not recalibrate the eye position");
 		std::cout << "Standby pose freeze and wear calibration passed\n";
+		for (const std::string sample : {"front", "side", "up", "chest", "cross"})
+		{
+			avatar::VrmDocument sampleModel(argv[1]);
+			avatar::VrmPose samplePose(sampleModel);
+			Vector3 previousElbows[2], firstElbows[2];
+			Matrix4 previousForearmFrames[2];
+			float mirrorError = 0, wristError = 0, elbowStep = 0, forearmDegrees = 0;
+			for (int sampleStep = 0; sampleStep <= 120; ++sampleStep)
+			{
+				const float roll = -120.0f + sampleStep * 2;
+				avatar::TrackingFrame sampleFrame;
+				sampleFrame.head.valid = sampleFrame.leftHand.valid = sampleFrame.rightHand.valid = true;
+				sampleFrame.head.matrix.translate(0, 1.65f, 0);
+				for (const std::string side : {"left", "right"})
+				{
+					const float sign = side == "left" ? -1.0f : 1.0f;
+					Vector3 relative(sign * 0.25f, -0.35f, -0.25f), forward(0, 0, -1), up(0, 1, 0);
+					if (sample == "side") { relative = Vector3(sign * 0.55f, -0.25f, 0); forward = Vector3(sign, 0, 0); }
+					if (sample == "up") { relative = Vector3(sign * 0.2f, 0.1f, -0.12f); forward = Vector3(0, 1, 0); up = Vector3(0, 0, -1); }
+					if (sample == "chest") relative = Vector3(sign * 0.1f, -0.3f, -0.2f);
+					if (sample == "cross") relative = Vector3(-sign * 0.1f, -0.3f, -0.3f);
+					Matrix4 handRoll, turn;
+					handRoll.rotateZ(roll * -sign);
+					turn.rotateY(180);
+					auto &hand = side == "left" ? sampleFrame.leftHand : sampleFrame.rightHand;
+					hand.matrix = avatar::handFrame(forward, up) * handRoll * turn;
+					hand.matrix[12] = relative.x;
+					hand.matrix[13] = relative.y + 1.65f;
+					hand.matrix[14] = relative.z;
+				}
+				samplePose.update(sampleFrame);
+				const auto left = trackedBone(sampleModel, samplePose, "leftLowerArm");
+				const auto right = trackedBone(sampleModel, samplePose, "rightLowerArm");
+				mirrorError = std::max(mirrorError, (Vector3(-left.x, left.y, left.z) - right).length());
+				if (left.x > 0 || right.x < 0) throw std::runtime_error("Elbow crossed the torso center in reference poses");
+				int sideNumber = 0;
+				for (const std::string side : {"left", "right"})
+				{
+					const auto elbow = side == "left" ? left : right;
+					const auto &hand = side == "left" ? sampleFrame.leftHand.matrix : sampleFrame.rightHand.matrix;
+					wristError = std::max(wristError, (trackedBone(sampleModel, samplePose, side + "Hand")
+						- Vector3(hand[12], hand[13], hand[14])).length());
+					if (sampleStep > 0) elbowStep = std::max(elbowStep, (elbow - previousElbows[sideNumber]).length());
+					else firstElbows[sideNumber] = elbow;
+					const auto lower = avatar::orientation(avatar::world(sampleModel.scene().nodes[sampleModel.humanBones().at(side + "LowerArm")]));
+					if (sampleStep > 0)
+					{
+						const auto delta = Matrix4(previousForearmFrames[sideNumber]).invert() * lower;
+						const float cosine = std::max(-1.0f, std::min(1.0f, (delta[0] + delta[5] + delta[10] - 1) * 0.5f));
+						forearmDegrees = std::max(forearmDegrees, std::acos(cosine) * 180.0f / 3.141592654f);
+					}
+					previousForearmFrames[sideNumber] = lower;
+					previousElbows[sideNumber++] = elbow;
+				}
+			}
+			const float wristRollResponse = (previousElbows[0] - firstElbows[0]).length();
+			std::cout << sample << " mirrorError=" << mirrorError << " wristError=" << wristError
+				<< " elbowStep=" << elbowStep << " forearmStepDegrees=" << forearmDegrees << " wristRollResponse=" << wristRollResponse << '\n';
+			if (mirrorError > 0.0001f || wristError > 0.001f || elbowStep > 0.01f || forearmDegrees > 5)
+				throw std::runtime_error("Arm reference sweep failed");
+		}
 	}
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
 }
