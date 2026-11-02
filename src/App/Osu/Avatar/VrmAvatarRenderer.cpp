@@ -25,6 +25,7 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 		return (scene.materials[left.material].alpha_mode == cgltf_alpha_mode_blend)
 			< (scene.materials[right.material].alpha_mode == cgltf_alpha_mode_blend);
 	});
+	m_viewIndices = readViewIndices(m_document, m_geometry);
 	for (std::size_t index = 0; index < scene.images_count; ++index)
 	{
 		const auto &source = scene.images[index];
@@ -60,15 +61,19 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	m_pose.update(tracking);
 }
 
-void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection)
+void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson)
 {
 	const auto &scene = m_document.scene();
 	auto *shader = m_shader.get();
 	shader->enable();
 	auto matrix = viewProjection * m_pose.modelToTracking();
 	shader->setUniformMatrix4fv("matrix", matrix);
-	for (const auto &primitive : m_geometry)
+	for (std::size_t primitiveIndex = 0; primitiveIndex < m_geometry.size(); ++primitiveIndex)
 	{
+		const auto &primitive = m_geometry[primitiveIndex];
+		const auto &views = m_viewIndices[primitiveIndex];
+		const auto &indices = firstPerson ? views.firstPerson : views.thirdPerson;
+		if (indices.empty()) continue;
 		const auto &material = scene.materials[primitive.material];
 		shader->setUniform1i("alphaMode", static_cast<int>(material.alpha_mode));
 		shader->setUniform1f("alphaCutoff", material.alpha_cutoff);
@@ -79,7 +84,7 @@ void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection)
 		image->bind();
 		const auto positions = skinPositions(scene, primitive);
 		VertexArrayObject vertices;
-		for (auto index : primitive.indices)
+		for (auto index : indices)
 		{
 			vertices.addVertex(positions[index]);
 			vertices.addTexcoord(primitive.vertices[index].uv[0], primitive.vertices[index].uv[1]);

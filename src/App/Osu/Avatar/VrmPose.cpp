@@ -73,7 +73,7 @@ cgltf_node &VrmPose::bone(const std::string &name)
 	return m_document.scene().nodes[found->second];
 }
 
-void VrmPose::recalibrate() { m_scale = 0; }
+void VrmPose::recalibrate() { m_calibrated = false; }
 
 void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target)
 {
@@ -94,8 +94,11 @@ void VrmPose::update(const TrackingFrame &tracking)
 {
 	if (!tracking.head.valid) return;
 	const auto headPosition = position(tracking.head.matrix);
-	if (headPosition.y <= 0.1f) return;
-	if (m_scale == 0) m_scale = headPosition.y / m_restEyes.y;
+	if (!m_calibrated)
+	{
+		m_floorHeight = headPosition.y - m_restEyes.y;
+		m_calibrated = true;
+	}
 	auto &scene = m_document.scene();
 	for (std::size_t index = 0; index < scene.nodes_count; ++index)
 	{
@@ -103,12 +106,11 @@ void VrmPose::update(const TrackingFrame &tracking)
 		scene.nodes[index].has_matrix = true;
 	}
 	const float yaw = std::atan2(-tracking.head.matrix[8], -tracking.head.matrix[10]) * 180.0f / 3.14159265358979323846f;
-	Matrix4 rotation, translation, scale, turn;
+	Matrix4 rotation, translation, turn;
 	rotation.rotateY(yaw);
-	translation.translate(headPosition.x, 0, headPosition.z);
-	scale.scale(m_scale);
+	translation.translate(headPosition.x, m_floorHeight, headPosition.z);
 	turn.rotateY(180);
-	m_modelToTracking = translation * rotation * scale;
+	m_modelToTracking = translation * rotation;
 	const auto trackingToModel = Matrix4(m_modelToTracking).invert();
 	const auto headDelta = Matrix4(rotation).invert() * orientation(tracking.head.matrix) * turn;
 	auto &head = bone("head");

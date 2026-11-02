@@ -274,14 +274,14 @@ OsuVR::~OsuVR()
 
 void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 {
-	if (m_avatar && openvr->isSpectatorDraw())
+	if (m_avatar)
 	{
 		avatar::TrackingFrame tracking;
 		tracking.head.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::Head, tracking.head.matrix);
 		tracking.leftHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, tracking.leftHand.matrix);
 		tracking.rightHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, tracking.rightHand.matrix);
 		m_avatar->updateTracking(tracking);
-		m_avatar->draw(g, mvp);
+		m_avatar->draw(g, mvp, !openvr->isSpectatorDraw());
 	}
 	// draw floor
 	if (osu_vr_draw_floor.getBool())

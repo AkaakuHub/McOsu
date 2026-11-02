@@ -28,7 +28,8 @@ private:
 	std::vector<Matrix4> m_restLocal;
 	std::vector<Matrix4> m_restWorld;
 	Vector3 m_restEyes;
-	float m_scale = 0;
+	bool m_calibrated = false;
+	float m_floorHeight = 0;
 	Matrix4 m_modelToTracking;
 };
 }
