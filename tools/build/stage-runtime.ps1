@@ -30,10 +30,11 @@ foreach ($name in @('libatomic-1.dll', 'libgcc_s_dw2-1.dll', 'libstdc++-6.dll', 
 $configuration = Join-Path $OutputDirectory 'cfg'
 New-Item -ItemType Directory -Path $configuration | Out-Null
 $avatarPath = (Resolve-Path -LiteralPath $Avatar).Path.Replace('\', '/')
-@(
+$lines = @(
     "osu_vr_avatar $avatarPath"
     'vr_draw_hmd_to_window 1'
     'vr_spectator_mode 1'
     'vr_spectator_camera_position 0 1.3 3'
     'vr_spectator_camera_rotation 180 0 0'
-) | Set-Content -LiteralPath (Join-Path $configuration 'osuvr.cfg') -Encoding utf8
+)
+[System.IO.File]::WriteAllLines((Join-Path $configuration 'osuvr.cfg'), $lines, [System.Text.UTF8Encoding]::new($false))
