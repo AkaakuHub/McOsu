@@ -24,6 +24,7 @@ struct BodyTrackingFrame
     std::array<BodyTrackingStatus, 3> status = {{BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned}};
 };
 BodyTrackerRole bodyTrackerRole(const std::string &controllerType);
+bool bodyTrackerPoseUsable(bool connected, bool poseValid, bool runningNormally, const Matrix4 &matrix);
 BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devices, const std::array<std::string, 3> &bindings);
 
 class OpenVRBodyTracking

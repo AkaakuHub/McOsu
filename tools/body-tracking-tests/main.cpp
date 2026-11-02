@@ -1,6 +1,7 @@
 #include "OpenVRBodyTracking.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace avatar;
 void require(bool value, const char *name)
@@ -15,6 +16,13 @@ BodyTrackerDevice device(const char *serial, const char *type)
 }
 int main()
 {
+    Matrix4 matrix;
+    require(bodyTrackerPoseUsable(true, true, true, matrix), "normal tracking accepted");
+    require(!bodyTrackerPoseUsable(false, true, true, matrix), "disconnected pose rejected");
+    require(!bodyTrackerPoseUsable(true, false, true, matrix), "invalid native pose rejected");
+    require(!bodyTrackerPoseUsable(true, true, false, matrix), "out of range tracking rejected");
+    Matrix4 malformed(std::numeric_limits<float>::quiet_NaN(), 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+    require(!bodyTrackerPoseUsable(true, true, true, malformed), "nonfinite sensor matrix rejected");
     const std::array<std::string, 3> automatic = {{"", "", ""}};
     std::vector<BodyTrackerDevice> devices = {device("w", "vive_tracker_waist"), device("l", "vive_tracker_left_foot"), device("r", "vive_tracker_right_foot")};
     auto frame = assignBodyTrackers(devices, automatic);

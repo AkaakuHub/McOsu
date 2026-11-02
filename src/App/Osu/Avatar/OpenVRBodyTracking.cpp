@@ -4,6 +4,14 @@
 
 namespace avatar
 {
+bool bodyTrackerPoseUsable(bool connected, bool poseValid, bool runningNormally, const Matrix4 &matrix)
+{
+    if (!connected || !poseValid || !runningNormally) return false;
+    for (int index = 0; index < 16; ++index)
+        if (!std::isfinite(matrix[index])) return false;
+    return true;
+}
+
 BodyTrackerRole bodyTrackerRole(const std::string &type)
 {
     if (type == "vive_tracker_waist") return BodyTrackerRole::Waist;
@@ -86,14 +94,12 @@ BodyTrackingFrame OpenVRBodyTracking::sample(float predictionSeconds)
         device.serial = property(ETrackedDeviceProperty_Prop_SerialNumber_String);
         device.controllerType = property(ETrackedDeviceProperty_Prop_ControllerType_String);
         const auto &pose = poses[index];
-        device.pose.valid = device.connected && pose.bPoseIsValid && pose.eTrackingResult == ETrackingResult_TrackingResult_Running_OK;
         const auto &m = pose.mDeviceToAbsoluteTracking;
-        for (int row = 0; row < 3; ++row)
-            for (int column = 0; column < 4; ++column)
-                if (!std::isfinite(m.m[row][column])) device.pose.valid = false;
-        if (device.pose.valid)
-            device.pose.matrix = Matrix4(m.m[0][0], m.m[1][0], m.m[2][0], 0, m.m[0][1], m.m[1][1], m.m[2][1], 0,
-                m.m[0][2], m.m[1][2], m.m[2][2], 0, m.m[0][3], m.m[1][3], m.m[2][3], 1);
+        const Matrix4 matrix(m.m[0][0], m.m[1][0], m.m[2][0], 0, m.m[0][1], m.m[1][1], m.m[2][1], 0,
+            m.m[0][2], m.m[1][2], m.m[2][2], 0, m.m[0][3], m.m[1][3], m.m[2][3], 1);
+        device.pose.valid = bodyTrackerPoseUsable(device.connected, pose.bPoseIsValid,
+            pose.eTrackingResult == ETrackingResult_TrackingResult_Running_OK, matrix);
+        if (device.pose.valid) device.pose.matrix = matrix;
         m_impl->devices.push_back(device);
     }
     return assignBodyTrackers(m_impl->devices, m_impl->bindings);
