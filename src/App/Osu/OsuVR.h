@@ -75,6 +75,8 @@ private:
 	void onScreenMatrixChange(UString oldValue, UString newValue);
 	void onAvatarChange(UString oldValue, UString newValue);
 	void recalibrateAvatar();
+	void rememberLayout();
+	void cancelLayoutEdit();
 	std::unique_ptr<avatar::VrmAvatarRenderer> m_avatar;
 	bool m_avatarSpectator = false;
 	void onPlayfieldMatrixChange(UString oldValue, UString newValue);
@@ -100,6 +102,10 @@ private:
 	Matrix4 m_screenMatrixBackup;
 	Matrix4 m_playfieldMatrix;
 	Matrix4 m_playfieldMatrixBackup;
+	Matrix4 m_savedScreenMatrix;
+	Matrix4 m_savedPlayfieldMatrix;
+	float m_savedScreenScale = 1;
+	float m_savedPlayfieldScale = 1;
 	bool m_bMovingPlayfieldCheck;
 	bool m_bMovingPlayfieldAllow;
 	bool m_bMovingScreenCheck;
@@ -130,6 +136,7 @@ private:
 	bool m_bMenuCheck;
 
 	bool m_bScaleCheck;
+	bool m_bScaleAllow = false;
 	bool m_bIsPlayerScalingPlayfield;
 	float m_fScaleBackup;
 	float m_fDefaultScreenScale;

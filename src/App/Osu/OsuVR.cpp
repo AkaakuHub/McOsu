@@ -31,6 +31,8 @@
 #include "OsuVRUIImageCheckbox.h"
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
+#include <limits>
 #include "OsuVRUISlider.h"
 
 ConVar osu_vr_matrix_screen("osu_vr_matrix_screen");
@@ -38,7 +40,7 @@ ConVar osu_vr_avatar("osu_vr_avatar", "", FCVAR_NONE);
 ConVar osu_vr_avatar_calibrate("osu_vr_avatar_calibrate");
 ConVar osu_vr_matrix_playfield("osu_vr_matrix_playfield");
 ConVar osu_vr_reset_matrices("osu_vr_reset_matrices");
-ConVar osu_vr_layout_lock("osu_vr_layout_lock", false, FCVAR_NONE);
+ConVar osu_vr_layout_lock("osu_vr_layout_lock", true, FCVAR_NONE);
 
 ConVar osu_vr_screen_scale("osu_vr_screen_scale", 1.64613f, FCVAR_NONE);
 ConVar osu_vr_playfield_scale("osu_vr_playfield_scale", 0.945593f, FCVAR_NONE);
@@ -262,6 +264,8 @@ OsuVR::OsuVR(Osu *osu)
 
 		// execute the vr config file (this then overwrites the matrices with the user settings if they exist)
 		Console::execConfigFile(OSUVR_CONFIG_FILE_NAME);
+		m_lockLayoutCheckbox->setChecked(osu_vr_layout_lock.getBool());
+		rememberLayout();
 		if (const auto *avatarPath = std::getenv("MCOSU_AVATAR")) osu_vr_avatar.setValue(avatarPath);
 		else onAvatarChange("", osu_vr_avatar.getString());
 		const auto *spectator = std::getenv("MCOSU_AVATAR_SPECTATOR");
@@ -563,6 +567,20 @@ void OsuVR::update()
 	OpenVRController *primaryController = openvr->getController();
 	OpenVRController *rightController = openvr->getRightController();
 	OpenVRController *leftController = openvr->getLeftController();
+	Matrix4 leftPose, rightPose;
+	const bool leftTracked = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, leftPose);
+	const bool rightTracked = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, rightPose);
+	if (!openvr->isHeadsetInUse() || (!leftTracked && !rightTracked))
+	{
+		cancelLayoutEdit();
+		if (!m_bClickCheck) engine->onMouseLeftChange(false);
+		if (!m_bMenuCheck) engine->onKeyboardKeyUp(KEY_ESCAPE);
+		m_bClickCheck = m_bMenuCheck = true;
+		return;
+	}
+	const bool layoutEditable = m_osu->isNotInPlayModeOrPaused()
+		&& !osu_vr_layout_lock.getBool() && leftTracked && rightTracked;
+	if (!layoutEditable) cancelLayoutEdit();
 
 	// calculate virtual screen plane and cursor pos, and set it
 	float virtualScreenPlaneIntersectionDistance = 0.0f;
@@ -729,7 +747,7 @@ void OsuVR::update()
 		}
 	}
 
-	if (m_osu->isNotInPlayModeOrPaused() && !osu_vr_layout_lock.getBool()) // only allow moving while not actively playing
+	if (layoutEditable)
 	{
 		// move virtual screen while grip button is pressed on right controller, anchor at controller
 		if (rightController->isButtonPressed(OpenVRController::BUTTON::BUTTON_GRIP))
@@ -825,9 +843,11 @@ void OsuVR::update()
 	}
 
 	// handle scaling (pinching/zooming/whatever)
-	if (m_osu->isNotInPlayModeOrPaused() && !osu_vr_layout_lock.getBool()) // only allow scaling while not actively playing
+	if (layoutEditable)
 	{
-		if (openvr->getLeftController()->getTrigger() > 0.95f && openvr->getRightController()->getTrigger() > 0.95f)
+		const bool scalingGesture = leftController->getTrigger() > 0.95f && rightController->getTrigger() > 0.95f;
+		if (!scalingGesture) m_bScaleAllow = true;
+		if (scalingGesture && m_bScaleAllow)
 		{
 			const float controllerDistance = (openvr->getLeftController()->getPosition() - openvr->getRightController()->getPosition()).length();
 
@@ -1029,6 +1049,7 @@ void OsuVR::save()
 	// write new config file
 	// thankfully this path is relative and hardcoded, and thus not susceptible to unicode characters
 	std::ofstream out(userVRConfigFile.toUtf8());
+	out << std::setprecision(std::numeric_limits<float>::max_digits10);
 	if (!out.good())
 	{
 		if (m_osu != NULL)
@@ -1060,8 +1081,32 @@ void OsuVR::save()
 	out << "\n";
 	out << osu_vr_playfield_scale.getName().toUtf8() << " " << osu_vr_playfield_scale.getString().toUtf8();
 	out << "\n";
+	out << osu_vr_layout_lock.getName().toUtf8() << " " << (osu_vr_layout_lock.getBool() ? 1 : 0) << "\n";
 
 	out.close();
+	if (out.good()) rememberLayout();
+}
+
+void OsuVR::rememberLayout()
+{
+	m_savedScreenMatrix = m_screenMatrix;
+	m_savedPlayfieldMatrix = m_playfieldMatrix;
+	m_savedScreenScale = osu_vr_screen_scale.getFloat();
+	m_savedPlayfieldScale = osu_vr_playfield_scale.getFloat();
+}
+
+void OsuVR::cancelLayoutEdit()
+{
+	if (!m_bMovingScreenCheck || !m_bMovingPlayfieldCheck || !m_bScaleCheck)
+	{
+		m_screenMatrix = m_savedScreenMatrix;
+		m_playfieldMatrix = m_savedPlayfieldMatrix;
+		osu_vr_screen_scale.setValue(m_savedScreenScale);
+		osu_vr_playfield_scale.setValue(m_savedPlayfieldScale);
+	}
+	m_bMovingScreenCheck = m_bMovingPlayfieldCheck = m_bScaleCheck = true;
+	m_bMovingScreenAllow = m_bMovingPlayfieldAllow = false;
+	m_bScaleAllow = false;
 }
 
 void OsuVR::resetMatrices()
@@ -1113,6 +1158,7 @@ void OsuVR::onPlayfieldMatrixChange(UString oldValue, UString newValue)
 
 void OsuVR::onMatrixResetClicked()
 {
+	if (osu_vr_layout_lock.getBool()) return;
 	resetMatrices();
 	save();
 }
@@ -1120,6 +1166,8 @@ void OsuVR::onMatrixResetClicked()
 void OsuVR::onLayoutLockClicked()
 {
 	osu_vr_layout_lock.setValue(m_lockLayoutCheckbox->isChecked() ? 1.0f : 0.0f);
+	cancelLayoutEdit();
+	save();
 }
 
 void OsuVR::onKeyboardButtonClicked()
