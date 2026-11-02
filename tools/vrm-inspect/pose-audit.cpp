@@ -36,8 +36,9 @@ int main(int argc, char **argv)
 		frame.head.valid = frame.leftHand.valid = frame.rightHand.valid = true;
 		frame.head.matrix.translate(0, 1.65f, 0);
 		pose.update(frame);
-		float maxEyeError = 0, maxHandError = 0, maxHandDirectionError = 0;
-		for (int step = 0; step < 90; ++step)
+		float maxEyeError = 0, maxHandError = 0, maxHandDirectionError = 0, maxForearmStep = 0;
+		Matrix4 previousForearms[2];
+		for (int step = 0; step < 360; ++step)
 		{
 			const float phase = step * 0.02f;
 			Matrix4 yaw, tilt, location;
@@ -49,7 +50,7 @@ int main(int argc, char **argv)
 			{
 				Matrix4 relative, wrist;
 				relative.translate(hand == &frame.leftHand ? -0.25f : 0.25f, -0.35f, -0.25f);
-				wrist.rotateZ(std::sin(phase) * 90);
+				wrist.rotateZ(phase * 180);
 				hand->matrix = location * yaw * relative * wrist;
 			}
 			pose.update(frame);
@@ -67,6 +68,14 @@ int main(int argc, char **argv)
 					* fingerDirections[sideIndex++];
 				maxHandDirectionError = std::max(maxHandDirectionError,
 					(current - Vector3(-hand[8], -hand[9], -hand[10])).length());
+				const auto forearm = avatar::orientation(avatar::world(model.scene().nodes[model.humanBones().at(side + "LowerArm")]));
+				if (step > 0)
+				{
+					const auto delta = Matrix4(previousForearms[sideIndex - 1]).invert() * forearm;
+					const float cosine = std::max(-1.0f, std::min(1.0f, (delta[0] + delta[5] + delta[10] - 1) * 0.5f));
+					maxForearmStep = std::max(maxForearmStep, std::acos(cosine) * 180.0f / 3.141592654f);
+				}
+				previousForearms[sideIndex - 1] = forearm;
 				if (step == 0)
 				{
 					const auto shoulder = trackedBone(model, pose, side + "UpperArm");
@@ -77,9 +86,9 @@ int main(int argc, char **argv)
 			}
 			for (const auto &primitive : avatar::readGeometry(model.scene())) avatar::skinPositions(model.scene(), primitive);
 		}
-		std::cout << "frames=90 maxEyeError=" << maxEyeError << " maxHandError=" << maxHandError
-			<< " maxHandDirectionError=" << maxHandDirectionError << '\n';
-		if (maxEyeError > 0.0001f || maxHandError > 0.001f || maxHandDirectionError > 0.001f)
+		std::cout << "frames=360 maxEyeError=" << maxEyeError << " maxHandError=" << maxHandError
+			<< " maxHandDirectionError=" << maxHandDirectionError << " maxForearmStepDegrees=" << maxForearmStep << '\n';
+		if (maxEyeError > 0.0001f || maxHandError > 0.001f || maxHandDirectionError > 0.001f || maxForearmStep > 20)
 			throw std::runtime_error("Tracking targets were missed");
 	}
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
