@@ -14,4 +14,8 @@ Sources:
 
 This adapter returns explicit disconnected, unavailable component, interface, and invalid transform states. It does not substitute raw controller axes or claim to read wrist/finger joints. True skeletal input requires skeletal actions in an action manifest and matching bindings. Registering a new manifest changes the application's input configuration, so this path leaves the existing McOsu legacy manifest intact.
 
+The renderer only drives a hand after its palm component is available. Missing components stop that hand's tracking and are reported in `tracking.log`; raw device axes are not silently treated as anatomical hand axes. `handStatus` values are 0=available, 1=interface unavailable, 2=device disconnected, 3=component unavailable, 4=invalid transform.
+
+`VrmHandAnchors` derives a palm center line from the wrist and proximal finger bones, then raycasts the rest skinned hand mesh toward the back of the hand. The first surface intersection defines the avatar palm surface anchor. The pose solver subtracts the rotated anchor from the tracked palm position before solving the wrist. The runtime audit alternates wrist and palm targets, rotates both wrists repeatedly, and checks wrist position, finger direction and forearm continuity. This validates the mesh-derived mapping, not live device accuracy.
+
 `tools/vr-tracking-inspect` is a separate read-only utility. It uses `VRApplication_Utility`, lists connected devices and available render model component transforms, and shuts down only its own connection. On 2026-11-02 the captured runtime had only the Quest 3 HMD connected (`vrlink`, `generic_hmd` render model, `rift` controller type). Both hand devices were disconnected, so live palm component availability and offsets remain unverified.

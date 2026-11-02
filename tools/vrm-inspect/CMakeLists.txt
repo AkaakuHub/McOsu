@@ -24,6 +24,7 @@ add_executable(vrm-pose-audit pose-audit.cpp
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmSkinning.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmPose.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmPoseArm.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmHandAnchors.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmTransforms.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/PoseMath.cpp"
     "${MCOSU_ROOT}/third_party/McEngine/McEngine/src/Util/Matrices.cpp")

@@ -12,7 +12,7 @@ struct cgltf_node;
 namespace avatar
 {
 class VrmDocument;
-struct TrackedPose { bool valid = false; Matrix4 matrix; };
+struct TrackedPose { bool valid = false; Matrix4 matrix; bool palmSurface = false; };
 struct TrackingFrame { TrackedPose head; TrackedPose leftHand; TrackedPose rightHand; };
 
 class VrmPose
@@ -26,7 +26,7 @@ public:
 private:
 	cgltf_node &bone(const std::string &name);
 	void moveLimb(const std::string &side, bool arm, Vector3 target, Vector3 bend);
-	void moveArm(const std::string &side, const Matrix4 &target);
+	void moveArm(const std::string &side, const Matrix4 &target, bool palmSurface);
 	VrmDocument &m_document;
 	std::vector<Matrix4> m_restLocal;
 	std::vector<Matrix4> m_restWorld;
@@ -38,6 +38,7 @@ private:
 	std::chrono::steady_clock::time_point m_lastUpdate;
 	std::array<float, 2> m_armTwist = {{0, 0}};
 	std::array<bool, 2> m_hasArmTwist = {{false, false}};
+	std::array<Vector3, 2> m_palmAnchors;
 	Matrix4 m_modelToTracking;
 };
 }

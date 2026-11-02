@@ -26,6 +26,14 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 			< (scene.materials[right.material].alpha_mode == cgltf_alpha_mode_blend);
 	});
 	m_viewIndices = readViewIndices(m_document, m_geometry);
+	float bottom = 0, top = 0;
+	for (const auto &primitive : m_geometry)
+		for (const auto &vertex : skinPositions(scene, primitive))
+		{
+			bottom = std::min(bottom, vertex.y);
+			top = std::max(top, vertex.y);
+		}
+	m_subjectHeight = top - bottom;
 	for (std::size_t index = 0; index < scene.images_count; ++index)
 	{
 		const auto &source = scene.images[index];
@@ -50,15 +58,31 @@ VrmAvatarRenderer::~VrmAvatarRenderer() = default;
 
 void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 {
-	const int mask = (tracking.head.valid ? 1 : 0) | (tracking.leftHand.valid ? 2 : 0) | (tracking.rightHand.valid ? 4 : 0);
+	auto frame = tracking;
+	for (const auto side : {HandSide::Left, HandSide::Right})
+	{
+		auto &hand = side == HandSide::Left ? frame.leftHand : frame.rightHand;
+		if (!hand.valid) continue;
+		Matrix4 palm;
+		hand.valid = m_handTracking.tryGetPalmPose(side, hand.matrix, palm);
+		if (hand.valid)
+		{
+			hand.matrix = palm;
+			hand.palmSurface = true;
+		}
+	}
+	const int mask = (frame.head.valid ? 1 : 0) | (frame.leftHand.valid ? 2 : 0) | (frame.rightHand.valid ? 4 : 0)
+		| (static_cast<int>(m_handTracking.status(HandSide::Left)) << 3)
+		| (static_cast<int>(m_handTracking.status(HandSide::Right)) << 6);
 	if (mask != m_trackingMask)
 	{
-		debugLog("VRM tracking: head=%i left=%i right=%i headPosition=(%.3f %.3f %.3f)\n",
-			tracking.head.valid, tracking.leftHand.valid, tracking.rightHand.valid,
+		debugLog("VRM tracking: head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
+			frame.head.valid, frame.leftHand.valid, frame.rightHand.valid,
+			static_cast<int>(m_handTracking.status(HandSide::Left)), static_cast<int>(m_handTracking.status(HandSide::Right)),
 			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
 		m_trackingMask = mask;
 	}
-	m_pose.update(tracking);
+	m_pose.update(frame);
 }
 
 void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson)

@@ -76,6 +76,7 @@ private:
 	void onAvatarChange(UString oldValue, UString newValue);
 	void recalibrateAvatar();
 	std::unique_ptr<avatar::VrmAvatarRenderer> m_avatar;
+	bool m_avatarSpectator = false;
 	void onPlayfieldMatrixChange(UString oldValue, UString newValue);
 	void onMatrixResetClicked();
 	void onLayoutLockClicked();

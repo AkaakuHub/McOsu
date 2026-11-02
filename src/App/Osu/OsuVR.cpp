@@ -267,8 +267,7 @@ OsuVR::OsuVR(Osu *osu)
 		const auto *spectator = std::getenv("MCOSU_AVATAR_SPECTATOR");
 		if (spectator && std::strcmp(spectator, "1") == 0)
 		{
-			convar->getConVarByName("vr_spectator_mode")->setValue(1);
-			convar->getConVarByName("vr_draw_hmd_to_window")->setValue(1);
+			m_avatarSpectator = true;
 		}
 	}
 }
@@ -290,6 +289,7 @@ void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 		tracking.leftHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, tracking.leftHand.matrix);
 		tracking.rightHand.valid = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, tracking.rightHand.matrix);
 		m_avatar->updateTracking(tracking);
+		if (m_avatarSpectator) openvr->setSpectatorSubject(m_avatar->subjectTransform(), m_avatar->subjectHeight());
 		m_avatar->draw(g, mvp, !openvr->isSpectatorDraw());
 	}
 	// draw floor
@@ -538,6 +538,7 @@ void OsuVR::drawVRCursors(Graphics *g, Matrix4 &mvp)
 
 void OsuVR::onAvatarChange(UString oldValue, UString newValue)
 {
+	openvr->setSpectatorSubject(Matrix4(), 0);
 	m_avatar.reset();
 	if (newValue.length() == 0) return;
 	try

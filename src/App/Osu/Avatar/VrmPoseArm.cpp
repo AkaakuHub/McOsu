@@ -55,7 +55,7 @@ Matrix4 twistAround(const Matrix4 &matrix, Vector3 axis, float radians)
 }
 }
 
-void VrmPose::moveArm(const std::string &side, const Matrix4 &target)
+void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmSurface)
 {
 	const auto rest = [this](const std::string &name) { return m_restWorld[m_document.humanBones().at(name)]; };
 	auto &upper = bone(side + "UpperArm");
@@ -72,7 +72,8 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target)
 	turn.rotateY(180);
 	const auto targetFrame = orientation(target) * turn;
 	const auto desiredRotation = targetFrame * offset;
-	const auto targetPosition = position(target);
+	const auto targetPosition = position(target) - (palmSurface
+		? targetFrame * m_palmAnchors[side == "left" ? 0 : 1] : Vector3());
 	const auto upperLength = (position(world(lower)) - position(world(upper))).length();
 	const auto lowerLength = (position(world(hand)) - position(world(lower))).length();
 	const auto shoulderPosition = position(world(shoulder));

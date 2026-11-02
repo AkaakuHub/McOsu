@@ -3,6 +3,7 @@
 #include "VrmGeometry.h"
 #include "VrmSkinning.h"
 #include "VrmTransforms.h"
+#include "VrmHandAnchors.h"
 #include "cgltf.h"
 #include <cmath>
 #include <iostream>
@@ -23,6 +24,7 @@ int main(int argc, char **argv)
 	{
 		avatar::VrmDocument model(argv[1]);
 		avatar::VrmPose pose(model);
+		const auto anchors = avatar::measurePalmAnchors(model);
 		Vector3 fingerDirections[2];
 		int sideIndex = 0;
 		for (const std::string side : {"left", "right"})
@@ -52,6 +54,16 @@ int main(int argc, char **argv)
 				relative.translate(hand == &frame.leftHand ? -0.25f : 0.25f, -0.35f, -0.25f);
 				wrist.rotateZ(phase * 180);
 				hand->matrix = location * yaw * relative * wrist;
+				hand->palmSurface = step % 2 == 1;
+				if (hand->palmSurface)
+				{
+					Matrix4 turn;
+					turn.rotateY(180);
+					const auto offset = hand->matrix * turn * anchors[hand == &frame.leftHand ? 0 : 1];
+					hand->matrix[12] += offset.x;
+					hand->matrix[13] += offset.y;
+					hand->matrix[14] += offset.z;
+				}
 			}
 			pose.update(frame);
 			const auto eyes = (trackedBone(model, pose, "leftEye") + trackedBone(model, pose, "rightEye")) * 0.5f;
@@ -60,9 +72,13 @@ int main(int argc, char **argv)
 			sideIndex = 0;
 			for (const std::string side : {"left", "right"})
 			{
-				const auto &hand = side == "left" ? frame.leftHand.matrix : frame.rightHand.matrix;
+				const auto &tracked = side == "left" ? frame.leftHand : frame.rightHand;
+				const auto &hand = tracked.matrix;
+				Matrix4 turn;
+				turn.rotateY(180);
+				const auto offset = tracked.palmSurface ? hand * turn * anchors[side == "left" ? 0 : 1] : Vector3();
 				maxHandError = std::max(maxHandError,
-					(trackedBone(model, pose, side + "Hand") - Vector3(hand[12], hand[13], hand[14])).length());
+					(trackedBone(model, pose, side + "Hand") - Vector3(hand[12], hand[13], hand[14]) + offset).length());
 				const auto current = pose.modelToTracking()
 					* avatar::orientation(avatar::world(model.scene().nodes[model.humanBones().at(side + "Hand")]))
 					* fingerDirections[sideIndex++];

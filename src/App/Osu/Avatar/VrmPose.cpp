@@ -2,6 +2,7 @@
 #include "VrmDocument.h"
 #include "PoseMath.h"
 #include "VrmTransforms.h"
+#include "VrmHandAnchors.h"
 #include "cgltf.h"
 #include <algorithm>
 #include <cmath>
@@ -24,6 +25,7 @@ VrmPose::VrmPose(VrmDocument &document) : m_document(document)
 		"rightUpperLeg", "rightLowerLeg", "rightFoot"}) bone(name);
 	m_restEyes = (position(world(bone("leftEye"))) + position(world(bone("rightEye")))) * 0.5f;
 	if (m_restEyes.y <= 0) throw std::runtime_error("Avatar eyes must be above the floor");
+	m_palmAnchors = measurePalmAnchors(document);
 }
 
 cgltf_node &VrmPose::bone(const std::string &name)
@@ -127,7 +129,7 @@ void VrmPose::update(const TrackingFrame &tracking)
 	for (const std::string side : {"left", "right"})
 	{
 		const auto &hand = side == "left" ? tracking.leftHand : tracking.rightHand;
-		if (hand.valid) moveArm(side, trackingToModel * hand.matrix);
+		if (hand.valid) moveArm(side, trackingToModel * hand.matrix, hand.palmSurface);
 		const auto foot = m_document.humanBones().at(side + "Foot");
 		moveLimb(side, false, position(m_restWorld[foot]), Vector3(0, 0, 1));
 	}
