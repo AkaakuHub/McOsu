@@ -79,6 +79,9 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	frame.waist = body.waist;
 	frame.leftFoot = body.leftFoot;
 	frame.rightFoot = body.rightFoot;
+	frame.hasTrackingSpaceDelta = body.hasTrackingSpaceDelta;
+	frame.trackingSpaceDelta = body.trackingSpaceDelta;
+	if (body.hasTrackingSpaceDelta) m_springs.reset();
 	frame.head.valid = frame.head.valid && frame.headsetInUse;
 	for (const auto side : {HandSide::Left, HandSide::Right})
 	{
