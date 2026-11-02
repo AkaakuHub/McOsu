@@ -17,7 +17,7 @@ VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path
 {
 	m_shader.reset(graphics->createShaderFromSource(
 		"#version 110\nuniform mat4 matrix; varying vec2 uv; void main(){uv=gl_MultiTexCoord0.xy; gl_Position=matrix*gl_Vertex; gl_FrontColor=gl_Color;}",
-		"#version 110\nuniform sampler2D mytexture; uniform int alphaMode; uniform float alphaCutoff; varying vec2 uv; void main(){vec4 color=texture2D(mytexture,uv)*gl_Color; if(alphaMode==1 && color.a<alphaCutoff) discard; if(alphaMode!=2) color.a=1.0; gl_FragColor=color;}"));
+		"#version 110\nuniform sampler2D mytexture; uniform int alphaMode; uniform float alphaCutoff; uniform int cullBackfaces; varying vec2 uv; void main(){if(cullBackfaces!=0 && !gl_FrontFacing) discard; vec4 color=texture2D(mytexture,uv)*gl_Color; if(alphaMode==1 && color.a<alphaCutoff) discard; if(alphaMode!=2) color.a=1.0; gl_FragColor=color;}"));
 	m_shader->load();
 	if (!m_shader->isReady()) throw std::runtime_error("Avatar shader compilation failed");
 	const auto &scene = m_document.scene();
@@ -106,6 +106,7 @@ void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, 
 		const auto &indices = firstPerson ? views.firstPerson : views.thirdPerson;
 		if (indices.empty()) continue;
 		const auto &material = scene.materials[primitive.material];
+		shader->setUniform1i("cullBackfaces", firstPerson || !material.double_sided ? 1 : 0);
 		shader->setUniform1i("alphaMode", static_cast<int>(material.alpha_mode));
 		shader->setUniform1f("alphaCutoff", material.alpha_cutoff);
 		const auto &base = material.pbr_metallic_roughness;
