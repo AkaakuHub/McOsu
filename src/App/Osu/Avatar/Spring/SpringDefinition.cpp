@@ -90,7 +90,8 @@ SpringDefinition readSpringDefinition(const cgltf_data &scene)
 			settings.drag = nonnegative(joint.value("dragForce", 0.5f));
 			if (settings.drag > 1) throw std::runtime_error("SpringBone drag must be at most one");
 			if (joint.contains("gravityDir")) settings.gravityDirection = vector(joint.at("gravityDir"));
-			if (!chain.joints.empty() && !ancestor(&scene.nodes[chain.joints.back().node], &scene.nodes[settings.node]))
+			if (!chain.joints.empty() && (chain.joints.back().node == settings.node
+				|| !ancestor(&scene.nodes[chain.joints.back().node], &scene.nodes[settings.node])))
 				throw std::runtime_error("Spring joints must follow their ancestor order");
 			const auto *stop = chain.joints.empty() ? nullptr : &scene.nodes[chain.joints.back().node];
 			for (auto *node = &scene.nodes[settings.node]; node && node != stop; node = node->parent)

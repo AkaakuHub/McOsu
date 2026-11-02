@@ -17,5 +17,8 @@ target_include_directories(spring-core PUBLIC "${MCOSU_ROOT}/src/App/Osu/Avatar"
 add_executable(spring-math-tests math-tests.cpp)
 target_link_libraries(spring-math-tests PRIVATE spring-core)
 add_test(NAME spring-math COMMAND spring-math-tests)
+add_executable(spring-runtime-tests runtime-tests.cpp)
+target_link_libraries(spring-runtime-tests PRIVATE spring-core)
+add_test(NAME spring-runtime COMMAND spring-runtime-tests "${CMAKE_CURRENT_BINARY_DIR}/synthetic-spring.vrm")
 add_executable(spring-runtime-audit runtime-audit.cpp)
 target_link_libraries(spring-runtime-audit PRIVATE spring-core)
