@@ -32,6 +32,7 @@ int main(int argc, char **argv)
         frame.leftElbow.valid = frame.rightElbow.valid = true;
         const auto rest = [&](const char *name) { return position(world(model.scene().nodes[model.humanBones().at(name)])); };
         const auto eyes = (rest("leftEye") + rest("rightEye")) * 0.5f;
+        const auto restHeadPosition = rest("head");
         const float scale = 1.6f / eyes.y;
         const Vector3 offset(0, -0.75f, 0);
         const auto input = [&](const char *name, TrackedPose &target) {
@@ -48,6 +49,8 @@ int main(int argc, char **argv)
         frame.leftElbow.matrix.translate(-0.4f, 0.38f, -0.05f);
         frame.rightElbow.matrix.translate(0.4f, 0.38f, -0.05f);
         pose.update(frame);
+        check((joint(model, pose, "head") - point(pose.modelToTracking(), restHeadPosition)).length() < 0.001f,
+            "Upright calibration bent the spine to compensate for the model eye offset");
         const auto calibratedFoot = joint(model, pose, "leftFoot");
         check(std::abs(pose.modelToTracking()[13] + 0.75f) < 0.0001f, "Measured foot height did not correct floor");
         check((joint(model, pose, "leftHand") - position(frame.leftHand.matrix)).length() < 0.001f, "Tracked elbow broke wrist target");

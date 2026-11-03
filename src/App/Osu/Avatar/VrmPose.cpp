@@ -165,7 +165,8 @@ void VrmPose::update(const TrackingFrame &input)
 	}
 	Matrix4 rotation, translation, scale, turn;
 	rotation.rotateY(m_bodyYaw * 180.0f / 3.14159265358979323846f);
-	translation.translate(headPosition.x, m_trackingFloor, headPosition.z);
+	const auto restEyeOffset = rotation * (m_restEyes * m_scale);
+	translation.translate(headPosition.x - restEyeOffset.x, m_trackingFloor, headPosition.z - restEyeOffset.z);
 	scale.scale(m_scale);
 	turn.rotateY(180);
 	m_modelToTracking = translation * rotation * scale;
