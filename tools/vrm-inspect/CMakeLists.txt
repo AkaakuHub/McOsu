@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(McOsuVrmInspect LANGUAGES CXX)
 enable_testing()
 get_filename_component(MCOSU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+include("${MCOSU_ROOT}/tools/cmake/OzzIk.cmake")
 add_executable(vrm-inspect main.cpp "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmDocument.cpp")
 target_sources(vrm-inspect PRIVATE "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmGeometry.cpp")
 target_sources(vrm-inspect PRIVATE "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmSkinning.cpp")
@@ -18,7 +19,9 @@ target_include_directories(pose-math-test PRIVATE
     "${MCOSU_ROOT}/src/App/Osu/Avatar"
     "${MCOSU_ROOT}/third_party/McEngine/McEngine/src/Util")
 add_test(NAME pose-math COMMAND pose-math-test)
+target_link_libraries(pose-math-test PRIVATE ozz_animation)
 add_executable(vrm-pose-audit pose-audit.cpp
+    garment-audit.cpp
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmDocument.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmGeometry.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmSkinning.cpp"
@@ -29,8 +32,12 @@ add_executable(vrm-pose-audit pose-audit.cpp
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmHandAnchors.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/VrmTransforms.cpp"
     "${MCOSU_ROOT}/src/App/Osu/Avatar/PoseMath.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/Spring/SpringRuntime.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/Spring/SpringMath.cpp"
+    "${MCOSU_ROOT}/src/App/Osu/Avatar/Spring/SpringDefinition.cpp"
     "${MCOSU_ROOT}/third_party/McEngine/McEngine/src/Util/Matrices.cpp")
 target_compile_features(vrm-pose-audit PRIVATE cxx_std_11)
+target_link_libraries(vrm-pose-audit PRIVATE ozz_animation)
 target_include_directories(vrm-pose-audit PRIVATE
     "${MCOSU_ROOT}/src/App/Osu/Avatar"
     "${MCOSU_ROOT}/third_party/cgltf"

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(McOsuAvatar LANGUAGES C CXX)
 get_filename_component(MCOSU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+include("${MCOSU_ROOT}/tools/cmake/OzzIk.cmake")
 set(ENGINE_ROOT "${MCOSU_ROOT}/third_party/McEngine/McEngine")
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS "${ENGINE_ROOT}/src/*.cpp" "${ENGINE_ROOT}/src/*.c")
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/App/")
@@ -31,3 +32,4 @@ target_include_directories(McOsuAvatar PRIVATE ${INCLUDE_DIRECTORIES}
     "${MCOSU_ROOT}/third_party/cgltf" "${MCOSU_ROOT}/third_party/nlohmann")
 target_link_libraries(McOsuAvatar PRIVATE freetype opengl32 glew32 glu32 gdi32
     bass "${BASS_STATUS_LIBRARY}" bass_fx bassmix openvr_api comctl32 dwmapi comdlg32 psapi ws2_32 winmm pthread libjpeg atomic)
+target_link_libraries(McOsuAvatar PRIVATE ozz_animation)

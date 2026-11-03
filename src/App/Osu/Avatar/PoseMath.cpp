@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include "ozz/animation/runtime/ik_two_bone_job.h"
+#include "ozz/base/maths/simd_quaternion.h"
 
 namespace avatar
 {
@@ -24,9 +26,30 @@ LimbSolution solveLimb(Vector3 start, Vector3 target, Vector3 bendDirection, flo
 		std::min(distance, upperLength + lowerLength - 0.000001f));
 	auto bend = bendDirection - direction * bendDirection.dot(direction);
 	bend = bend.length() > 0.000001f ? bend.normalize() : perpendicular(direction);
-	const float along = (upperLength * upperLength - lowerLength * lowerLength + reach * reach) / (2 * reach);
-	const float height = std::sqrt(std::max(0.0f, upperLength * upperLength - along * along));
-	return {start + direction * along + bend * height, start + direction * reach};
+	using namespace ozz::math;
+	const auto load = [](Vector3 value) { return simd_float4::Load(value.x, value.y, value.z, 0); };
+	const auto vector = [](SimdFloat4 value) {
+		float elements[4];
+		StorePtrU(value, elements);
+		return Vector3(elements[0], elements[1], elements[2]);
+	};
+	Float4x4 root = Float4x4::identity();
+	Float4x4 middle = Float4x4::Translation(simd_float4::Load(0, -upperLength, 0, 0));
+	Float4x4 end = Float4x4::Translation(simd_float4::Load(0, -upperLength - lowerLength, 0, 0));
+	SimdQuaternion rootCorrection, middleCorrection;
+	ozz::animation::IKTwoBoneJob job;
+	job.start_joint = &root;
+	job.mid_joint = &middle;
+	job.end_joint = &end;
+	job.target = load(direction * reach);
+	job.pole_vector = load(bend);
+	job.start_joint_correction = &rootCorrection;
+	job.mid_joint_correction = &middleCorrection;
+	if (!job.Run()) throw std::runtime_error("ozz two-bone IK rejected the limb");
+	const auto upper = TransformVector(rootCorrection, simd_float4::Load(0, -upperLength, 0, 0));
+	const auto lower = TransformVector(rootCorrection,
+		TransformVector(middleCorrection, simd_float4::Load(0, -lowerLength, 0, 0)));
+	return {start + vector(upper), start + vector(upper + lower)};
 }
 
 Matrix4 rotationBetween(Vector3 from, Vector3 to)

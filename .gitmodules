@@ -1,3 +1,6 @@
 [submodule "third_party/McEngine"]
 	path = third_party/McEngine
 	url = https://github.com/AkaakuHub/McEngine.git
+[submodule "third_party/ozz-animation"]
+	path = third_party/ozz-animation
+	url = https://github.com/guillaumeblanc/ozz-animation.git

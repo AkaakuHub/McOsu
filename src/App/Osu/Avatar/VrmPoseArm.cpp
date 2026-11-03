@@ -98,9 +98,12 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 			targetFrame * Vector3(0, 0, 1), side == "left" ? 1.0f : -1.0f, upperLength, lowerLength);
 	if (elbow.valid)
 	{
-		const auto measuredElbow = position(elbow.matrix);
+		auto measuredElbow = position(elbow.matrix);
 		if ((measuredElbow - start).length() > 0.0001f && (targetPosition - measuredElbow).length() > 0.0001f)
 		{
+			const auto solved = solveLimb(start, targetPosition, measuredElbow - start,
+				(measuredElbow - start).length(), (targetPosition - measuredElbow).length());
+			measuredElbow = solved.middle;
 			rotateBone(upper, position(world(lower)) - start, measuredElbow - start);
 			auto lowerPose = world(lower);
 			lowerPose[12] = measuredElbow.x;

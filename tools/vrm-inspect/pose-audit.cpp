@@ -9,6 +9,8 @@
 #include <iostream>
 #include <stdexcept>
 
+void auditGarment(const char *path);
+
 Vector3 trackedBone(avatar::VrmDocument &model, const avatar::VrmPose &pose, const std::string &name)
 {
 	float matrix[16];
@@ -153,6 +155,7 @@ int main(int argc, char **argv)
 			trackedFrame.waist.matrix.translate(0.025f, -0.05f, 0);
 			trackedFrame.head.matrix[13] -= 0.1f;
 			trackedPose.update(trackedFrame);
+			for (int settle = 0; settle < 90; ++settle) trackedPose.update(trackedFrame);
 			const auto trackedEyes = (trackedBone(trackedModel, trackedPose, "leftEye") + trackedBone(trackedModel, trackedPose, "rightEye")) * 0.5f;
 			if ((trackedEyes - avatar::position(trackedFrame.head.matrix)).length() > 0.001f)
 				throw std::runtime_error("Torso did not reach a reachable measured head pose");
@@ -267,6 +270,8 @@ int main(int argc, char **argv)
 				throw std::runtime_error("Arm reference sweep failed");
 		}
 	}
+	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
+	try { auditGarment(argv[1]); }
 	catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
 }
 

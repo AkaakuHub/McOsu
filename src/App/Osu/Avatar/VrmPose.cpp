@@ -251,7 +251,10 @@ void VrmPose::update(const TrackingFrame &input)
 		if (elbow.valid) elbow.matrix = trackingToModel * elbow.matrix;
 		if (hand.valid) moveArm(side, trackingToModel * hand.matrix, hand.palmSurface, elbow);
 		const auto footTarget = trackingToModel * m_feet[side == "left" ? 0 : 1].pose;
-		moveLimb(side, false, position(footTarget), Vector3(side == "left" ? -0.1f : 0.1f, 0, 1));
+		const auto pelvisHeading = orientation(world(hips))
+			* orientation(m_restWorld[m_document.humanBones().at("hips")]).invert();
+		const auto kneeBend = pelvisHeading * Vector3(side == "left" ? -0.15f : 0.15f, 0, 1);
+		moveLimb(side, false, position(footTarget), kneeBend);
 		auto &foot = bone(side + "Foot");
 		auto footWorld = orientation(footTarget) * orientation(world(foot)).invert() * world(foot);
 		const auto footPosition = position(world(foot));
