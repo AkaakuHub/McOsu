@@ -81,7 +81,7 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	const auto reaching = targetPosition - shoulderPosition;
 	const float extension = std::max(0.0f, std::min(1.0f,
 		((targetPosition - position(world(upper))).length() / (upperLength + lowerLength) - 0.75f) / 0.25f));
-	if (extension > 0)
+	if (!elbow.valid && extension > 0)
 	{
 		const float shoulderAngle = std::min(30.0f, angle(shoulderDirection, reaching) * 180.0f / 3.141592654f) * extension;
 		auto axis = shoulderDirection.cross(reaching);
@@ -96,7 +96,26 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	const auto bend = elbow.valid ? position(elbow.matrix) - start
 		: elbowDirection(targetPosition - start, restVector,
 			targetFrame * Vector3(0, 0, 1), side == "left" ? 1.0f : -1.0f, upperLength, lowerLength);
-	moveLimb(side, true, targetPosition, bend);
+	if (elbow.valid)
+	{
+		const auto measuredElbow = position(elbow.matrix);
+		if ((measuredElbow - start).length() > 0.0001f && (targetPosition - measuredElbow).length() > 0.0001f)
+		{
+			rotateBone(upper, position(world(lower)) - start, measuredElbow - start);
+			auto lowerPose = world(lower);
+			lowerPose[12] = measuredElbow.x;
+			lowerPose[13] = measuredElbow.y;
+			lowerPose[14] = measuredElbow.z;
+			setWorld(lower, lowerPose);
+			rotateBone(lower, position(world(hand)) - measuredElbow, targetPosition - measuredElbow);
+			auto handPose = world(hand);
+			handPose[12] = targetPosition.x;
+			handPose[13] = targetPosition.y;
+			handPose[14] = targetPosition.z;
+			setWorld(hand, handPose);
+		}
+	}
+	else moveLimb(side, true, targetPosition, bend);
 	const auto lowerWorld = world(lower);
 	const auto handWorld = world(hand);
 	const auto forearmAxis = (position(handWorld) - position(lowerWorld)).normalize();

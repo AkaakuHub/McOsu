@@ -50,6 +50,7 @@ int main(int argc, char **argv)
         pose.update(frame);
         check(std::abs(pose.modelToTracking()[13] + 0.75f) < 0.0001f, "Measured foot height did not correct floor");
         check((joint(model, pose, "leftHand") - position(frame.leftHand.matrix)).length() < 0.001f, "Tracked elbow broke wrist target");
+        check((joint(model, pose, "leftLowerArm") - position(frame.leftElbow.matrix)).length() < 0.001f, "Measured elbow position was not followed");
         const auto shoulder = joint(model, pose, "leftUpperArm");
         const auto axis = (joint(model, pose, "leftHand") - shoulder).normalize();
         auto measured = position(frame.leftElbow.matrix) - shoulder;
