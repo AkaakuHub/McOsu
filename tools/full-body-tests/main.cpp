@@ -48,13 +48,16 @@ int main(int argc, char **argv)
         frame.rightHand.matrix.translate(0.28f, 0.5f, -0.28f);
         frame.leftElbow.matrix.translate(-0.4f, 0.38f, -0.05f);
         frame.rightElbow.matrix.translate(0.4f, 0.38f, -0.05f);
+        const float upperLength = (rest("leftLowerArm") - rest("leftUpperArm")).length() * scale;
+        const float lowerLength = (rest("leftHand") - rest("leftLowerArm")).length() * scale;
         pose.update(frame);
         check((joint(model, pose, "head") - point(pose.modelToTracking(), restHeadPosition)).length() < 0.001f,
             "Upright calibration bent the spine to compensate for the model eye offset");
         const auto calibratedFoot = joint(model, pose, "leftFoot");
         check(std::abs(pose.modelToTracking()[13] + 0.75f) < 0.0001f, "Measured foot height did not correct floor");
         check((joint(model, pose, "leftHand") - position(frame.leftHand.matrix)).length() < 0.001f, "Tracked elbow broke wrist target");
-        check((joint(model, pose, "leftLowerArm") - position(frame.leftElbow.matrix)).length() < 0.001f, "Measured elbow position was not followed");
+        check(std::abs((joint(model, pose, "leftLowerArm") - joint(model, pose, "leftUpperArm")).length() - upperLength) < 0.001f, "Tracker stretched upper arm");
+        check(std::abs((joint(model, pose, "leftHand") - joint(model, pose, "leftLowerArm")).length() - lowerLength) < 0.001f, "Tracker stretched forearm");
         const auto shoulder = joint(model, pose, "leftUpperArm");
         const auto axis = (joint(model, pose, "leftHand") - shoulder).normalize();
         auto measured = position(frame.leftElbow.matrix) - shoulder;

@@ -96,29 +96,7 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	const auto bend = elbow.valid ? position(elbow.matrix) - start
 		: elbowDirection(targetPosition - start, restVector,
 			targetFrame * Vector3(0, 0, 1), side == "left" ? 1.0f : -1.0f, upperLength, lowerLength);
-	if (elbow.valid)
-	{
-		auto measuredElbow = position(elbow.matrix);
-		if ((measuredElbow - start).length() > 0.0001f && (targetPosition - measuredElbow).length() > 0.0001f)
-		{
-			const auto solved = solveLimb(start, targetPosition, measuredElbow - start,
-				(measuredElbow - start).length(), (targetPosition - measuredElbow).length());
-			measuredElbow = solved.middle;
-			rotateBone(upper, position(world(lower)) - start, measuredElbow - start);
-			auto lowerPose = world(lower);
-			lowerPose[12] = measuredElbow.x;
-			lowerPose[13] = measuredElbow.y;
-			lowerPose[14] = measuredElbow.z;
-			setWorld(lower, lowerPose);
-			rotateBone(lower, position(world(hand)) - measuredElbow, targetPosition - measuredElbow);
-			auto handPose = world(hand);
-			handPose[12] = targetPosition.x;
-			handPose[13] = targetPosition.y;
-			handPose[14] = targetPosition.z;
-			setWorld(hand, handPose);
-		}
-	}
-	else moveLimb(side, true, targetPosition, bend);
+	moveLimb(side, true, targetPosition, bend);
 	const auto lowerWorld = world(lower);
 	const auto handWorld = world(hand);
 	const auto forearmAxis = (position(handWorld) - position(lowerWorld)).normalize();
