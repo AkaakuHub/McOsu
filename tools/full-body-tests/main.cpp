@@ -48,6 +48,7 @@ int main(int argc, char **argv)
         frame.leftElbow.matrix.translate(-0.4f, 0.38f, -0.05f);
         frame.rightElbow.matrix.translate(0.4f, 0.38f, -0.05f);
         pose.update(frame);
+        const auto calibratedFoot = joint(model, pose, "leftFoot");
         check(std::abs(pose.modelToTracking()[13] + 0.75f) < 0.0001f, "Measured foot height did not correct floor");
         check((joint(model, pose, "leftHand") - position(frame.leftHand.matrix)).length() < 0.001f, "Tracked elbow broke wrist target");
         check((joint(model, pose, "leftLowerArm") - position(frame.leftElbow.matrix)).length() < 0.001f, "Measured elbow position was not followed");
@@ -68,6 +69,16 @@ int main(int argc, char **argv)
         check(firstWaistStep > 0 && firstWaistStep < 0.05f, "Waist noise filter did not interpolate");
         for (int step = 0; step < 90; ++step) pose.update(frame);
         check(std::abs(joint(model, pose, "hips").x - beforeWaist.x - 0.05f) < 0.0001f, "Waist filter drifted away from measured pose");
+        frame.leftFoot.matrix[13] += 0.15f;
+        frame.leftFoot.matrix[14] -= 0.08f;
+        pose.update(frame);
+        const auto ankle = joint(model, pose, "leftFoot");
+        check((ankle - calibratedFoot - Vector3(0, 0.15f, -0.08f)).length() < 0.001f, "Measured knee lift lost foot position");
+        const auto hip = joint(model, pose, "leftUpperLeg");
+        const auto knee = joint(model, pose, "leftLowerLeg");
+        const auto legAxis = (ankle - hip).normalize();
+        const auto kneeOffset = knee - hip - legAxis * (knee - hip).dot(legAxis);
+        check(kneeOffset.z < 0, "Knee bent behind the tracked body");
         std::cout << "Nonzero floor, measured elbow plane, wrist target and elbow loss passed\n";
     }
     catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
