@@ -7,6 +7,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <chrono>
 
 int main(int argc, char **argv)
 {
@@ -32,12 +33,17 @@ int main(int argc, char **argv)
 			}
 		};
 		float maxMotion = 0, maxLengthError = 0;
+		double totalMilliseconds = 0, peakMilliseconds = 0;
 		for (int step = 0; step < 180; ++step)
 		{
 			restore();
 			Matrix4 root;
 			root.translate(std::sin(step * 0.1f) * 0.03f, 0, 0);
+			const auto started = std::chrono::steady_clock::now();
 			runtime.update(1.0f / 60, root);
+			const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+			totalMilliseconds += elapsed;
+			peakMilliseconds = std::max(peakMilliseconds, elapsed);
 			for (const auto &chain : definition.chains)
 				for (std::size_t index = 0; index + 1 < chain.joints.size(); ++index)
 				{
@@ -58,7 +64,8 @@ int main(int argc, char **argv)
 			resetError = std::max(resetError,
 				(avatar::position(avatar::world(model.scene().nodes[index])) - avatar::position(restWorld[index])).length());
 		std::cout << "chains=" << runtime.chainCount() << " jointPairs=" << runtime.jointPairCount()
-			<< " frames=180 maxMotion=" << maxMotion << " maxLengthError=" << maxLengthError << " resetError=" << resetError << '\n';
+			<< " frames=180 maxMotion=" << maxMotion << " maxLengthError=" << maxLengthError << " resetError=" << resetError
+			<< " meanSpringMs=" << totalMilliseconds / 180 << " peakSpringMs=" << peakMilliseconds << '\n';
 		if (runtime.jointPairCount() == 0 || maxMotion < 0.00001f || maxLengthError > 0.0001f || resetError > 0.0001f)
 			throw std::runtime_error("Spring runtime motion, bone length or pause reset audit failed");
 	}
