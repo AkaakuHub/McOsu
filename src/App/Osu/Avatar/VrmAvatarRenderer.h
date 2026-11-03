@@ -45,6 +45,7 @@ private:
 	int m_trackingMask = -1;
 	float m_subjectHeight = 0;
 	double m_poseFrameTime = -1;
+	double m_armLogTime = 0;
 };
 }
 

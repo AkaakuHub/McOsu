@@ -1,5 +1,6 @@
 #include "VrmAvatarRenderer.h"
 #include "VrmSkinning.h"
+#include "VrmTransforms.h"
 #include "cbase.h"
 #include "Engine.h"
 #include "ConVar.h"
@@ -122,6 +123,24 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			static_cast<int>(body.status[0]), static_cast<int>(body.status[1]), static_cast<int>(body.status[2]));
 	}
 	m_pose.update(frame);
+	if (frame.head.valid && frame.headsetInUse && engine->getTime() >= m_armLogTime)
+	{
+		m_armLogTime = engine->getTime() + 0.1;
+		for (const std::string side : {"left", "right"})
+		{
+			const auto joint = [&](const char *name) {
+				return point(m_pose.modelToTracking(), position(world(m_document.scene().nodes[m_document.humanBones().at(side + name)])));
+			};
+			const auto shoulder = joint("UpperArm"), elbow = joint("LowerArm"), wrist = joint("Hand");
+			const auto upper = (elbow - shoulder).normalize(), lower = (wrist - elbow).normalize();
+			const auto &input = side == "left" ? frame.leftHand : frame.rightHand;
+			debugLog("VRM arm: t=%.3f side=%s valid=%i shoulder=(%.4f %.4f %.4f) elbow=(%.4f %.4f %.4f) wrist=(%.4f %.4f %.4f) input=(%.4f %.4f %.4f) forward=(%.4f %.4f %.4f) bend=%.2f\n",
+				engine->getTime(), side.c_str(), input.valid, shoulder.x, shoulder.y, shoulder.z,
+				elbow.x, elbow.y, elbow.z, wrist.x, wrist.y, wrist.z,
+				input.matrix[12], input.matrix[13], input.matrix[14], -input.matrix[8], -input.matrix[9], -input.matrix[10],
+				std::acos(std::max(-1.0f, std::min(1.0f, upper.dot(lower)))) * 180.0f / 3.141592654f);
+		}
+	}
 	if (frame.head.valid && frame.headsetInUse)
 		m_springs.update(static_cast<float>(engine->getFrameTime()), m_pose.modelToTracking());
 	else m_springs.reset();
