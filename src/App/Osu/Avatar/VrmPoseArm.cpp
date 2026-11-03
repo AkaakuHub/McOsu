@@ -81,7 +81,7 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	const auto reaching = targetPosition - shoulderPosition;
 	const float extension = std::max(0.0f, std::min(1.0f,
 		((targetPosition - position(world(upper))).length() / (upperLength + lowerLength) - 0.75f) / 0.25f));
-	if (!elbow.valid && extension > 0)
+	if (extension > 0)
 	{
 		const float shoulderAngle = std::min(30.0f, angle(shoulderDirection, reaching) * 180.0f / 3.141592654f) * extension;
 		auto axis = shoulderDirection.cross(reaching);

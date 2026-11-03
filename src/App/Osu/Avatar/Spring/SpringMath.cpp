@@ -32,7 +32,7 @@ Vector3 collideSpringTail(Vector3 head, Vector3 tail, float length, float hitRad
 	const auto closest = collider.start + segment * along;
 	auto delta = tail - closest;
 	const float radius = collider.radius + hitRadius;
-	if (delta.length() >= radius) return tail;
+	if (delta.dot(delta) >= radius * radius) return tail;
 	if (delta.length() < 0.0000001f)
 	{
 		delta = tail - head;

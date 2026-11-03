@@ -7,10 +7,17 @@
 
 namespace avatar
 {
+Vector3 VrmPose::viewpoint() const
+{
+	const auto index = m_document.humanBones().at("head");
+	const auto local = point(Matrix4(m_restWorld[index]).invert(), m_restEyes);
+	return point(m_modelToTracking, point(world(m_document.scene().nodes[index]), local));
+}
+
 void VrmPose::rememberStablePose(const TrackingFrame &tracking, float speed)
 {
 	if (speed > 0.6f || tracking.head.matrix[5] < 0.5f
-		|| tracking.head.matrix[13] < m_restEyes.y * m_scale * 0.65f) return;
+		|| tracking.head.matrix[13] - m_trackingFloor < m_restEyes.y * m_scale * 0.65f) return;
 	StablePose pose;
 	pose.time = m_trackingTime;
 	pose.model = m_modelToTracking;

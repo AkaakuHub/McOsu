@@ -23,6 +23,7 @@ public:
 	void recalibrate();
 	const Matrix4 &modelToTracking() const { return m_modelToTracking; }
 	bool hasCalibration() const { return m_scale > 0; }
+	Vector3 viewpoint() const;
 
 private:
 	cgltf_node &bone(const std::string &name);

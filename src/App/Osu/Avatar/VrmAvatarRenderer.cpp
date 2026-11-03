@@ -145,11 +145,8 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	const auto posed = std::chrono::steady_clock::now();
 	if (frame.head.valid && frame.headsetInUse && engine->getTime() >= m_armLogTime)
 	{
-		m_armLogTime = engine->getTime() + 0.1;
-		const auto eye = [&](const char *name) {
-			return point(m_pose.modelToTracking(), position(world(m_document.scene().nodes[m_document.humanBones().at(name)])));
-		};
-		const auto eyes = (eye("leftEye") + eye("rightEye")) * 0.5f;
+		m_armLogTime = engine->getTime() + 1;
+		const auto eyes = m_pose.viewpoint();
 		const auto hmd = position(frame.head.matrix);
 		debugLog("VRM eyes: hmd=(%.4f %.4f %.4f) avatar=(%.4f %.4f %.4f) error=%.4f scale=%.4f floor=%.4f\n",
 			hmd.x, hmd.y, hmd.z, eyes.x, eyes.y, eyes.z, (eyes - hmd).length(),
@@ -190,6 +187,8 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			std::chrono::duration<double, std::milli>(posed - started).count(),
 			std::chrono::duration<double, std::milli>(sprung - posed).count(),
 			std::chrono::duration<double, std::milli>(skinned - sprung).count());
+		if (frame.head.valid && frame.headsetInUse)
+			debugLog("VRM viewpoint after springs: error=%.6f\n", (m_pose.viewpoint() - position(frame.head.matrix)).length());
 	}
 }
 

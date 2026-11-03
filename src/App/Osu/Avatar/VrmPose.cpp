@@ -24,6 +24,7 @@ VrmPose::VrmPose(VrmDocument &document) : m_document(document)
 		"rightUpperArm", "rightLowerArm", "rightHand", "leftUpperLeg", "leftLowerLeg", "leftFoot",
 		"rightUpperLeg", "rightLowerLeg", "rightFoot"}) bone(name);
 	m_restEyes = (position(world(bone("leftEye"))) + position(world(bone("rightEye")))) * 0.5f;
+	m_restEyes += Vector3(0, 0, 0.06f);
 	if (m_restEyes.y <= 0) throw std::runtime_error("Avatar eyes must be above the floor");
 	m_palmAnchors = measurePalmAnchors(document);
 	FootLocomotion::Config config;
