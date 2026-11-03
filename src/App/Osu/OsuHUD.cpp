@@ -45,6 +45,23 @@
 
 #include "DirectX11Interface.h"
 #include "OpenGLES2Interface.h"
+#include "OpenGLHeaders.h"
+
+#ifdef MCENGINE_FEATURE_OPENGL
+namespace
+{
+class ScopedHudDepthWrites
+{
+public:
+	ScopedHudDepthWrites() { glGetBooleanv(GL_DEPTH_WRITEMASK, &m_previous); glDepthMask(GL_FALSE); }
+	~ScopedHudDepthWrites() { glDepthMask(m_previous); }
+	ScopedHudDepthWrites(const ScopedHudDepthWrites &) = delete;
+	ScopedHudDepthWrites &operator=(const ScopedHudDepthWrites &) = delete;
+private:
+	GLboolean m_previous;
+};
+}
+#endif
 
 ConVar osu_automatic_cursor_size("osu_automatic_cursor_size", false, FCVAR_NONE);
 
@@ -697,6 +714,9 @@ void OsuHUD::drawVR(Graphics *g, Matrix4 &mvp, OsuVR *vr)
 	OsuBeatmapStandard *beatmap = dynamic_cast<OsuBeatmapStandard*>(m_osu->getSelectedBeatmap());
 	if (beatmap == NULL) return; // sanity check
 
+#ifdef MCENGINE_FEATURE_OPENGL
+	const ScopedHudDepthWrites hudDepth;
+#endif
 	vr->getShaderTexturedLegacyGeneric()->enable();
 	vr->getShaderTexturedLegacyGeneric()->setUniformMatrix4fv("matrix", mvp);
 	{
@@ -770,6 +790,9 @@ void OsuHUD::drawVR(Graphics *g, Matrix4 &mvp, OsuVR *vr)
 
 void OsuHUD::drawVRDummy(Graphics *g, Matrix4 &mvp, OsuVR *vr)
 {
+#ifdef MCENGINE_FEATURE_OPENGL
+	const ScopedHudDepthWrites hudDepth;
+#endif
 	vr->getShaderTexturedLegacyGeneric()->enable();
 	vr->getShaderTexturedLegacyGeneric()->setUniformMatrix4fv("matrix", mvp);
 	{
