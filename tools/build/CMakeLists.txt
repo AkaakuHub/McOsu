@@ -6,6 +6,12 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS "${ENGINE_ROOT}/src/*.cpp" "$
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/App/")
 file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS "${MCOSU_ROOT}/src/*.cpp" "${MCOSU_ROOT}/src/*.c")
 add_executable(McOsuAvatar WIN32 ${ENGINE_SOURCES} ${APP_SOURCES})
+set(BASS_STATUS_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/bass-status.lib")
+add_custom_command(OUTPUT "${BASS_STATUS_LIBRARY}"
+    COMMAND "${CMAKE_DLLTOOL}" -k -d "${MCOSU_ROOT}/third_party/McEngine/tools/audio-output-test/bass-status.def" -l "${BASS_STATUS_LIBRARY}"
+    DEPENDS "${MCOSU_ROOT}/third_party/McEngine/tools/audio-output-test/bass-status.def")
+add_custom_target(bass-status-import DEPENDS "${BASS_STATUS_LIBRARY}")
+add_dependencies(McOsuAvatar bass-status-import)
 target_compile_features(McOsuAvatar PRIVATE cxx_std_11)
 set_target_properties(McOsuAvatar PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES)
 target_compile_options(McOsuAvatar PRIVATE -O2 -fmax-errors=3)
@@ -24,4 +30,4 @@ target_include_directories(McOsuAvatar PRIVATE ${INCLUDE_DIRECTORIES}
     "${MCOSU_ROOT}/third_party/openvr-input"
     "${MCOSU_ROOT}/third_party/cgltf" "${MCOSU_ROOT}/third_party/nlohmann")
 target_link_libraries(McOsuAvatar PRIVATE freetype opengl32 glew32 glu32 gdi32
-    bass bass_fx bassmix openvr_api comctl32 dwmapi comdlg32 psapi ws2_32 winmm pthread libjpeg atomic)
+    bass "${BASS_STATUS_LIBRARY}" bass_fx bassmix openvr_api comctl32 dwmapi comdlg32 psapi ws2_32 winmm pthread libjpeg atomic)
