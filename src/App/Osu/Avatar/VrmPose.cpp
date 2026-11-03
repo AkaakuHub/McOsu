@@ -233,7 +233,9 @@ void VrmPose::update(const TrackingFrame &input)
 	for (const std::string side : {"left", "right"})
 	{
 		const auto &hand = side == "left" ? tracking.leftHand : tracking.rightHand;
-		if (hand.valid) moveArm(side, trackingToModel * hand.matrix, hand.palmSurface);
+		auto elbow = side == "left" ? tracking.leftElbow : tracking.rightElbow;
+		if (elbow.valid) elbow.matrix = trackingToModel * elbow.matrix;
+		if (hand.valid) moveArm(side, trackingToModel * hand.matrix, hand.palmSurface, elbow);
 		const auto footTarget = trackingToModel * m_feet[side == "left" ? 0 : 1].pose;
 		moveLimb(side, false, position(footTarget), Vector3(side == "left" ? -0.1f : 0.1f, 0, 1));
 		auto &foot = bone(side + "Foot");

@@ -11,16 +11,25 @@
 #include <cstring>
 #include <stdexcept>
 #include <algorithm>
+#include <cstdlib>
 
 ConVar osu_vr_avatar_waist_tracker("osu_vr_avatar_waist_tracker", "", FCVAR_NONE);
 ConVar osu_vr_avatar_left_foot_tracker("osu_vr_avatar_left_foot_tracker", "", FCVAR_NONE);
 ConVar osu_vr_avatar_right_foot_tracker("osu_vr_avatar_right_foot_tracker", "", FCVAR_NONE);
+ConVar osu_vr_avatar_left_elbow_tracker("osu_vr_avatar_left_elbow_tracker", "", FCVAR_NONE);
+ConVar osu_vr_avatar_right_elbow_tracker("osu_vr_avatar_right_elbow_tracker", "", FCVAR_NONE);
 
 namespace avatar
 {
 VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path)
 	: m_document(path), m_pose(m_document), m_springs(m_document), m_geometry(readGeometry(m_document.scene()))
 {
+	for (auto *setting : {&osu_vr_avatar_waist_tracker, &osu_vr_avatar_left_foot_tracker,
+		&osu_vr_avatar_right_foot_tracker, &osu_vr_avatar_left_elbow_tracker, &osu_vr_avatar_right_elbow_tracker})
+	{
+		const auto name = std::string("MCOSU_") + setting->getName().toUtf8();
+		if (const auto *serial = std::getenv(name.c_str())) setting->setValue(UString(serial));
+	}
 	m_shader.reset(graphics->createShaderFromSource(
 		"#version 110\nuniform mat4 matrix; varying vec2 uv; void main(){uv=gl_MultiTexCoord0.xy; gl_Position=matrix*gl_Vertex; gl_FrontColor=gl_Color;}",
 		"#version 110\nuniform sampler2D mytexture; uniform int alphaMode; uniform float alphaCutoff; uniform int cullBackfaces; varying vec2 uv; void main(){if(cullBackfaces!=0 && !gl_FrontFacing) discard; vec4 color=texture2D(mytexture,uv)*gl_Color; if(alphaMode==1 && color.a<alphaCutoff) discard; if(alphaMode!=2) color.a=1.0; gl_FragColor=color;}"));
@@ -68,12 +77,13 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	m_poseFrameTime = engine->getTime();
 	auto frame = tracking;
 	frame.deltaTime = static_cast<float>(engine->getFrameTime());
-	const std::array<std::string, 3> bindings = {{osu_vr_avatar_waist_tracker.getString().toUtf8(),
-		osu_vr_avatar_left_foot_tracker.getString().toUtf8(), osu_vr_avatar_right_foot_tracker.getString().toUtf8()}};
+	const std::array<std::string, 5> bindings = {{osu_vr_avatar_waist_tracker.getString().toUtf8(),
+		osu_vr_avatar_left_foot_tracker.getString().toUtf8(), osu_vr_avatar_right_foot_tracker.getString().toUtf8(),
+		osu_vr_avatar_left_elbow_tracker.getString().toUtf8(), osu_vr_avatar_right_elbow_tracker.getString().toUtf8()}};
 	if (bindings != m_trackerBindings)
 	{
 		m_trackerBindings = bindings;
-		m_bodyTracking.setBindings(bindings[0], bindings[1], bindings[2]);
+		m_bodyTracking.setBindings(bindings);
 		m_pose.recalibrate();
 	}
 	const auto body = m_bodyTracking.sample();
@@ -89,6 +99,8 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	frame.waist = body.waist;
 	frame.leftFoot = body.leftFoot;
 	frame.rightFoot = body.rightFoot;
+	frame.leftElbow = body.leftElbow;
+	frame.rightElbow = body.rightElbow;
 	frame.hasTrackingSpaceDelta = body.hasTrackingSpaceDelta;
 	frame.trackingSpaceDelta = body.trackingSpaceDelta;
 	if (body.hasTrackingSpaceDelta) m_springs.reset();
@@ -110,7 +122,8 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		| (static_cast<int>(m_handTracking.status(HandSide::Left)) << 3)
 		| (static_cast<int>(m_handTracking.status(HandSide::Right)) << 6)
 		| (static_cast<int>(body.status[0]) << 9) | (static_cast<int>(body.status[1]) << 12)
-		| (static_cast<int>(body.status[2]) << 15);
+		| (static_cast<int>(body.status[2]) << 15)
+		| (static_cast<int>(body.status[3]) << 18) | (static_cast<int>(body.status[4]) << 21);
 	if (mask != m_trackingMask)
 	{
 		debugLog("VRM tracking: inUse=%i head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
@@ -118,9 +131,10 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			static_cast<int>(m_handTracking.status(HandSide::Left)), static_cast<int>(m_handTracking.status(HandSide::Right)),
 			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
 		m_trackingMask = mask;
-		debugLog("VRM body tracking: waist=%i leftFoot=%i rightFoot=%i status=(%i %i %i)\n",
-			frame.waist.valid, frame.leftFoot.valid, frame.rightFoot.valid,
-			static_cast<int>(body.status[0]), static_cast<int>(body.status[1]), static_cast<int>(body.status[2]));
+		debugLog("VRM body tracking: waist=%i leftFoot=%i rightFoot=%i leftElbow=%i rightElbow=%i status=(%i %i %i %i %i)\n",
+			frame.waist.valid, frame.leftFoot.valid, frame.rightFoot.valid, frame.leftElbow.valid, frame.rightElbow.valid,
+			static_cast<int>(body.status[0]), static_cast<int>(body.status[1]), static_cast<int>(body.status[2]),
+			static_cast<int>(body.status[3]), static_cast<int>(body.status[4]));
 	}
 	m_pose.update(frame);
 	if (frame.head.valid && frame.headsetInUse && engine->getTime() >= m_armLogTime)
@@ -134,11 +148,16 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			const auto shoulder = joint("UpperArm"), elbow = joint("LowerArm"), wrist = joint("Hand");
 			const auto upper = (elbow - shoulder).normalize(), lower = (wrist - elbow).normalize();
 			const auto &input = side == "left" ? frame.leftHand : frame.rightHand;
+			const auto &elbowInput = side == "left" ? frame.leftElbow : frame.rightElbow;
 			debugLog("VRM arm: t=%.3f side=%s valid=%i shoulder=(%.4f %.4f %.4f) elbow=(%.4f %.4f %.4f) wrist=(%.4f %.4f %.4f) input=(%.4f %.4f %.4f) forward=(%.4f %.4f %.4f) bend=%.2f\n",
 				engine->getTime(), side.c_str(), input.valid, shoulder.x, shoulder.y, shoulder.z,
 				elbow.x, elbow.y, elbow.z, wrist.x, wrist.y, wrist.z,
 				input.matrix[12], input.matrix[13], input.matrix[14], -input.matrix[8], -input.matrix[9], -input.matrix[10],
 				std::acos(std::max(-1.0f, std::min(1.0f, upper.dot(lower)))) * 180.0f / 3.141592654f);
+			if (elbowInput.valid)
+				debugLog("VRM elbow tracker: side=%s serial=%s measured=(%.4f %.4f %.4f) solvedError=%.4f\n",
+					side.c_str(), elbowInput.deviceId.c_str(), elbowInput.matrix[12], elbowInput.matrix[13], elbowInput.matrix[14],
+					(elbow - position(elbowInput.matrix)).length());
 		}
 	}
 	if (frame.head.valid && frame.headsetInUse)

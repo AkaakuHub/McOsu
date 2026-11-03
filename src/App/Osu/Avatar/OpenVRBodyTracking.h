@@ -9,7 +9,7 @@
 
 namespace avatar
 {
-enum class BodyTrackerRole { Waist, LeftFoot, RightFoot, Unassigned };
+enum class BodyTrackerRole { Waist, LeftFoot, RightFoot, LeftElbow, RightElbow, Unassigned };
 enum class BodyTrackingStatus { Available, InterfaceUnavailable, Unassigned, Missing, Ambiguous, InvalidPose };
 struct BodyTrackerDevice
 {
@@ -20,21 +20,21 @@ struct BodyTrackerDevice
 };
 struct BodyTrackingFrame
 {
-    TrackedPose waist, leftFoot, rightFoot;
+    TrackedPose waist, leftFoot, rightFoot, leftElbow, rightElbow;
     bool hasTrackingSpaceDelta = false;
     Matrix4 trackingSpaceDelta;
-    std::array<BodyTrackingStatus, 3> status = {{BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned}};
+    std::array<BodyTrackingStatus, 5> status = {{BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned, BodyTrackingStatus::Unassigned}};
 };
 BodyTrackerRole bodyTrackerRole(const std::string &controllerType);
 bool bodyTrackerPoseUsable(bool connected, bool poseValid, bool runningNormally, const Matrix4 &matrix);
-BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devices, const std::array<std::string, 3> &bindings);
+BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devices, const std::array<std::string, 5> &bindings);
 
 class OpenVRBodyTracking
 {
 public:
     OpenVRBodyTracking();
     ~OpenVRBodyTracking();
-    void setBindings(const std::string &waistSerial, const std::string &leftFootSerial, const std::string &rightFootSerial);
+    void setBindings(const std::array<std::string, 5> &bindings);
     BodyTrackingFrame sample();
     const std::vector<BodyTrackerDevice> &devices() const;
 private:

@@ -9,7 +9,7 @@ namespace avatar
 struct TrackedPose { bool valid = false; Matrix4 matrix; bool palmSurface = false; std::string deviceId; };
 struct TrackingFrame
 {
-    TrackedPose head, leftHand, rightHand, waist, leftFoot, rightFoot;
+    TrackedPose head, leftHand, rightHand, waist, leftFoot, rightFoot, leftElbow, rightElbow;
     bool headsetInUse = true;
     float deltaTime = 0;
     bool hasTrackingSpaceDelta = false;

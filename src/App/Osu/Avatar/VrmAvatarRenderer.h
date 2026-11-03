@@ -35,7 +35,7 @@ private:
 	SpringRuntime m_springs;
 	OpenVRHandTracking m_handTracking;
 	OpenVRBodyTracking m_bodyTracking;
-	std::array<std::string, 3> m_trackerBindings;
+	std::array<std::string, 5> m_trackerBindings;
 	std::vector<std::string> m_trackerDevices;
 	std::vector<Primitive> m_geometry;
 	std::vector<ViewIndices> m_viewIndices;

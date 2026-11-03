@@ -26,17 +26,19 @@ BodyTrackerRole bodyTrackerRole(const std::string &type)
     if (type == "vive_tracker_waist") return BodyTrackerRole::Waist;
     if (type == "vive_tracker_left_foot") return BodyTrackerRole::LeftFoot;
     if (type == "vive_tracker_right_foot") return BodyTrackerRole::RightFoot;
+    if (type == "vive_tracker_left_elbow") return BodyTrackerRole::LeftElbow;
+    if (type == "vive_tracker_right_elbow") return BodyTrackerRole::RightElbow;
     return BodyTrackerRole::Unassigned;
 }
 
-BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devices, const std::array<std::string, 3> &bindings)
+BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devices, const std::array<std::string, 5> &bindings)
 {
     BodyTrackingFrame result;
-    std::array<TrackedPose *, 3> poses = {{&result.waist, &result.leftFoot, &result.rightFoot}};
-    for (unsigned int role = 0; role < 3; ++role)
+    std::array<TrackedPose *, 5> poses = {{&result.waist, &result.leftFoot, &result.rightFoot, &result.leftElbow, &result.rightElbow}};
+    for (unsigned int role = 0; role < bindings.size(); ++role)
     {
         bool duplicate = false;
-        for (unsigned int other = 0; other < 3; ++other)
+        for (unsigned int other = 0; other < bindings.size(); ++other)
             if (other != role && !bindings[role].empty() && bindings[role] == bindings[other]) duplicate = true;
         unsigned int count = 0;
         const BodyTrackerDevice *selected = nullptr;
@@ -45,7 +47,7 @@ BodyTrackingFrame assignBodyTrackers(const std::vector<BodyTrackerDevice> &devic
             bool match = bindings[role].empty() ? static_cast<unsigned int>(bodyTrackerRole(device.controllerType)) == role : device.serial == bindings[role];
             if (match)
             {
-                for (unsigned int other = 0; other < 3; ++other)
+                for (unsigned int other = 0; other < bindings.size(); ++other)
                     if (other != role && !bindings[other].empty() && bindings[other] == device.serial) match = false;
             }
             if (match) { ++count; selected = &device; }
@@ -63,7 +65,7 @@ struct OpenVRBodyTracking::Impl
 {
     VR_IVRSystem_FnTable *system = nullptr;
     VR_IVRCompositor_FnTable *compositor = nullptr;
-    std::array<std::string, 3> bindings;
+    std::array<std::string, 5> bindings;
     std::vector<BodyTrackerDevice> devices;
     Matrix4 rawToStanding;
     bool hasRawToStanding = false;
@@ -71,9 +73,9 @@ struct OpenVRBodyTracking::Impl
 
 OpenVRBodyTracking::OpenVRBodyTracking() : m_impl(new Impl()) {}
 OpenVRBodyTracking::~OpenVRBodyTracking() = default;
-void OpenVRBodyTracking::setBindings(const std::string &waist, const std::string &left, const std::string &right)
+void OpenVRBodyTracking::setBindings(const std::array<std::string, 5> &bindings)
 {
-    m_impl->bindings = {{waist, left, right}};
+    m_impl->bindings = bindings;
 }
 const std::vector<BodyTrackerDevice> &OpenVRBodyTracking::devices() const { return m_impl->devices; }
 

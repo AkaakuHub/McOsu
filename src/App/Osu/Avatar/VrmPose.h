@@ -27,7 +27,7 @@ public:
 private:
 	cgltf_node &bone(const std::string &name);
 	void moveLimb(const std::string &side, bool arm, Vector3 target, Vector3 bend);
-	void moveArm(const std::string &side, const Matrix4 &target, bool palmSurface);
+	void moveArm(const std::string &side, const Matrix4 &target, bool palmSurface, const TrackedPose &elbow);
 	VrmDocument &m_document;
 	std::vector<Matrix4> m_restLocal;
 	std::vector<Matrix4> m_restWorld;
