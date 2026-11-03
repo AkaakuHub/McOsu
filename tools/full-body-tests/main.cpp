@@ -82,6 +82,24 @@ int main(int argc, char **argv)
         const auto legAxis = (ankle - hip).normalize();
         const auto kneeOffset = knee - hip - legAxis * (knee - hip).dot(legAxis);
         check(kneeOffset.z < 0, "Knee bent behind the tracked body");
+        {
+            VrmDocument acquiredModel(argv[1]);
+            VrmPose acquiredPose(acquiredModel);
+            TrackingFrame acquired;
+            acquired.deltaTime = 1.0f / 90;
+            acquired.head.valid = acquired.leftHand.valid = acquired.rightHand.valid = true;
+            acquired.head.matrix.translate(0.03f, 1.6f, 0);
+            acquired.leftHand.matrix.translate(-0.25f, 1.3f, -0.25f);
+            acquired.rightHand.matrix.translate(0.25f, 1.3f, -0.25f);
+            for (int step = 0; step < 90; ++step) acquiredPose.update(acquired);
+            const auto previousPelvis = joint(acquiredModel, acquiredPose, "hips");
+            acquired.waist.valid = true;
+            acquired.waist.deviceId = "new-waist";
+            acquired.waist.matrix.translate(0.1f, 1, 0);
+            acquiredPose.update(acquired);
+            check((joint(acquiredModel, acquiredPose, "hips") - previousPelvis).length() < 0.0001f,
+                "New waist tracker snapped the current body to the rest pose");
+        }
         std::cout << "Nonzero floor, measured elbow plane, wrist target and elbow loss passed\n";
     }
     catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }

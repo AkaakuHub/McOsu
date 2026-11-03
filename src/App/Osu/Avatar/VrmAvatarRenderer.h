@@ -45,6 +45,7 @@ private:
 	std::unique_ptr<Image> m_white;
 	std::unique_ptr<Shader> m_shader;
 	int m_trackingMask = -1;
+	int m_bodyTrackingMask = -1;
 	float m_subjectHeight = 0;
 	double m_poseFrameTime = -1;
 	double m_armLogTime = 0;

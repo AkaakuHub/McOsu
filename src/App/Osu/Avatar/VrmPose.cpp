@@ -74,6 +74,7 @@ void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target, Vector
 
 void VrmPose::update(const TrackingFrame &input)
 {
+	const bool hadPose = m_calibrated && m_scale > 0;
 	if (input.hasTrackingSpaceDelta)
 	{
 		m_pendingSpaceDelta = m_hasPendingSpaceDelta ? input.trackingSpaceDelta * m_pendingSpaceDelta : input.trackingSpaceDelta;
@@ -103,6 +104,8 @@ void VrmPose::update(const TrackingFrame &input)
 	const float headSpeed = m_calibrated && deltaTime > 0 ? (headPosition - m_previousHead).length() / deltaTime : 0;
 	if (tracking.hasTrackingSpaceDelta)
 	{
+		m_trackingFloor = point(tracking.trackingSpaceDelta, Vector3(0, m_trackingFloor, 0)).y;
+		m_lastWaistTime = -1;
 		m_previousHead = point(tracking.trackingSpaceDelta, m_previousHead);
 		m_bodyYaw += std::atan2(tracking.trackingSpaceDelta[8], tracking.trackingSpaceDelta[10]);
 		for (auto &foot : m_feet) foot.pose = tracking.trackingSpaceDelta * foot.pose;
@@ -157,6 +160,17 @@ void VrmPose::update(const TrackingFrame &input)
 		}
 	}
 	m_previousHead = headPosition;
+	m_hasPreviousBonePoses = hadPose && std::any_of(m_trackerBindings.begin(), m_trackerBindings.end(),
+		[](const TrackerBinding &binding) { return !binding.calibrated; });
+	if (m_hasPreviousBonePoses)
+	{
+		const std::array<std::string, 3> names = {{"hips", "leftFoot", "rightFoot"}};
+		for (std::size_t index = 0; index < names.size(); ++index)
+		{
+			m_previousBonePoses[index] = m_modelToTracking * world(bone(names[index]));
+			if (tracking.hasTrackingSpaceDelta) m_previousBonePoses[index] = tracking.trackingSpaceDelta * m_previousBonePoses[index];
+		}
+	}
 	auto &scene = m_document.scene();
 	for (std::size_t index = 0; index < scene.nodes_count; ++index)
 	{

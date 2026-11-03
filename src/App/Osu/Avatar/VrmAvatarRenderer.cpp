@@ -106,7 +106,9 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	frame.rightElbow = body.rightElbow;
 	frame.hasTrackingSpaceDelta = body.hasTrackingSpaceDelta;
 	frame.trackingSpaceDelta = body.trackingSpaceDelta;
-	if (body.hasTrackingSpaceDelta) m_springs.reset();
+	const int bodyMask = (body.waist.valid ? 1 : 0) | (body.leftFoot.valid ? 2 : 0) | (body.rightFoot.valid ? 4 : 0);
+	if (body.hasTrackingSpaceDelta || bodyMask != m_bodyTrackingMask) m_springs.reset();
+	m_bodyTrackingMask = bodyMask;
 	frame.head.valid = frame.head.valid && frame.headsetInUse;
 	for (const auto side : {HandSide::Left, HandSide::Right})
 	{

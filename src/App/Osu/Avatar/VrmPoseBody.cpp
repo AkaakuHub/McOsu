@@ -40,8 +40,9 @@ Matrix4 VrmPose::trackedBonePose(const TrackedPose &tracked, int index, const st
 	if (!binding.calibrated || binding.deviceId != tracked.deviceId)
 	{
 		if (index == 0) m_lastWaistTime = -1;
-		binding.offset = Matrix4(tracked.matrix).invert() * m_modelToTracking
-			* m_restWorld[m_document.humanBones().at(name)];
+		const auto reference = m_hasPreviousBonePoses ? m_previousBonePoses[index]
+			: m_modelToTracking * m_restWorld[m_document.humanBones().at(name)];
+		binding.offset = Matrix4(tracked.matrix).invert() * reference;
 		binding.deviceId = tracked.deviceId;
 		binding.calibrated = true;
 	}

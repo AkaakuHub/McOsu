@@ -41,6 +41,8 @@ private:
 	Vector3 m_previousHead;
 	struct TrackerBinding { bool calibrated = false; std::string deviceId; Matrix4 offset; };
 	std::array<TrackerBinding, 3> m_trackerBindings;
+	std::array<Matrix4, 3> m_previousBonePoses;
+	bool m_hasPreviousBonePoses = false;
 	FootLocomotion m_locomotion;
 	std::array<FootLocomotion::Foot, 2> m_feet;
 	bool m_hasFeet = false;
