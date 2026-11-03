@@ -48,6 +48,16 @@ int main(int argc, char **argv)
         frame.rightHand.matrix.translate(0.28f, 0.5f, -0.28f);
         frame.leftElbow.matrix.translate(-0.4f, 0.38f, -0.05f);
         frame.rightElbow.matrix.translate(0.4f, 0.38f, -0.05f);
+        {
+            VrmDocument startupModel(argv[1]);
+            VrmPose startupPose(startupModel);
+            auto startup = frame;
+            startup.leftHand.valid = startup.rightHand.valid = false;
+            startupPose.update(startup);
+            check(startupPose.hasCalibration(), "Head calibration waited for both hands");
+            check((startupPose.viewpoint() - position(startup.head.matrix)).length() < 0.0001f,
+                "Initial headset viewpoint was displaced while hands were unavailable");
+        }
         const float upperLength = (rest("leftLowerArm") - rest("leftUpperArm")).length() * scale;
         const float lowerLength = (rest("leftHand") - rest("leftLowerArm")).length() * scale;
         pose.update(frame);

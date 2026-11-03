@@ -95,7 +95,6 @@ void VrmPose::update(const TrackingFrame &input)
 		m_calibrated = false;
 		return;
 	}
-	if (m_scale == 0 && (!tracking.leftHand.valid || !tracking.rightHand.valid)) return;
 	tracking.hasTrackingSpaceDelta = m_hasPendingSpaceDelta;
 	tracking.trackingSpaceDelta = m_pendingSpaceDelta;
 	m_hasPendingSpaceDelta = false;

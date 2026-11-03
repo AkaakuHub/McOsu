@@ -196,6 +196,7 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 
 void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson)
 {
+	if (!m_pose.hasCalibration()) return;
 	const auto &scene = m_document.scene();
 	auto *shader = m_shader.get();
 	shader->enable();
