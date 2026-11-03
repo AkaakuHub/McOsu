@@ -18,6 +18,9 @@ foreach ($directory in @('cfg', 'fonts', 'materials', 'models', 'shaders')) {
 }
 New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 Copy-Item -LiteralPath $executable -Destination $OutputDirectory
+$licenses = Join-Path $OutputDirectory 'licenses'
+New-Item -ItemType Directory -Path $licenses | Out-Null
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../../third_party/ozz-animation/LICENSE.md') -Destination (Join-Path $licenses 'ozz-animation.txt')
 foreach ($name in @('bass.dll', 'bass_fx.dll', 'openvr_api.dll', 'glew32.dll')) {
     Copy-Item -LiteralPath (Join-Path $ProfileDirectory $name) -Destination $OutputDirectory
 }

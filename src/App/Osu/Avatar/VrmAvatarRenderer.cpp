@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <cstdlib>
+#include <chrono>
 
 ConVar osu_vr_avatar_waist_tracker("osu_vr_avatar_waist_tracker", "", FCVAR_NONE);
 ConVar osu_vr_avatar_left_foot_tracker("osu_vr_avatar_left_foot_tracker", "", FCVAR_NONE);
@@ -24,6 +25,7 @@ namespace avatar
 VrmAvatarRenderer::VrmAvatarRenderer(Graphics *graphics, const std::string &path)
 	: m_document(path), m_pose(m_document), m_springs(m_document), m_geometry(readGeometry(m_document.scene()))
 {
+	m_skinnedPositions.resize(m_geometry.size());
 	for (auto *setting : {&osu_vr_avatar_waist_tracker, &osu_vr_avatar_left_foot_tracker,
 		&osu_vr_avatar_right_foot_tracker, &osu_vr_avatar_left_elbow_tracker, &osu_vr_avatar_right_elbow_tracker})
 	{
@@ -75,6 +77,7 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 {
 	if (m_poseFrameTime == engine->getTime()) return;
 	m_poseFrameTime = engine->getTime();
+	const auto started = std::chrono::steady_clock::now();
 	auto frame = tracking;
 	frame.deltaTime = static_cast<float>(engine->getFrameTime());
 	const std::array<std::string, 5> bindings = {{osu_vr_avatar_waist_tracker.getString().toUtf8(),
@@ -137,6 +140,7 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			static_cast<int>(body.status[3]), static_cast<int>(body.status[4]));
 	}
 	m_pose.update(frame);
+	const auto posed = std::chrono::steady_clock::now();
 	if (frame.head.valid && frame.headsetInUse && engine->getTime() >= m_armLogTime)
 	{
 		m_armLogTime = engine->getTime() + 0.1;
@@ -163,6 +167,19 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	if (frame.head.valid && frame.headsetInUse)
 		m_springs.update(static_cast<float>(engine->getFrameTime()), m_pose.modelToTracking());
 	else m_springs.reset();
+	const auto sprung = std::chrono::steady_clock::now();
+	for (std::size_t index = 0; index < m_geometry.size(); ++index)
+		m_skinnedPositions[index] = skinPositions(m_document.scene(), m_geometry[index]);
+	const auto skinned = std::chrono::steady_clock::now();
+	if (engine->getTime() >= m_performanceLogTime)
+	{
+		m_performanceLogTime = engine->getTime() + 1;
+		debugLog("VRM frame: frameMs=%.2f poseMs=%.2f springMs=%.2f skinMs=%.2f\n",
+			engine->getFrameTime() * 1000,
+			std::chrono::duration<double, std::milli>(posed - started).count(),
+			std::chrono::duration<double, std::milli>(sprung - posed).count(),
+			std::chrono::duration<double, std::milli>(skinned - sprung).count());
+	}
 }
 
 void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, bool firstPerson)
@@ -187,7 +204,7 @@ void VrmAvatarRenderer::draw(Graphics *graphics, const Matrix4 &viewProjection, 
 		if (base.base_color_texture.texture)
 			image = m_images.at(base.base_color_texture.texture->image - scene.images).get();
 		image->bind();
-		const auto positions = skinPositions(scene, primitive);
+		const auto &positions = m_skinnedPositions[primitiveIndex];
 		VertexArrayObject vertices;
 		for (auto index : indices)
 		{

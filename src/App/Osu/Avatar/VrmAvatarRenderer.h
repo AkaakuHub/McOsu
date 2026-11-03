@@ -39,6 +39,7 @@ private:
 	std::array<std::string, 5> m_trackerBindings;
 	std::vector<std::string> m_trackerDevices;
 	std::vector<Primitive> m_geometry;
+	std::vector<std::vector<Vector3>> m_skinnedPositions;
 	std::vector<ViewIndices> m_viewIndices;
 	std::vector<std::unique_ptr<Image>> m_images;
 	std::unique_ptr<Image> m_white;
@@ -47,6 +48,7 @@ private:
 	float m_subjectHeight = 0;
 	double m_poseFrameTime = -1;
 	double m_armLogTime = 0;
+	double m_performanceLogTime = 0;
 };
 }
 
