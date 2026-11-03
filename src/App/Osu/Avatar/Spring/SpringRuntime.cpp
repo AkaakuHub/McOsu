@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace avatar
 {
@@ -22,6 +23,17 @@ float maxScale(const Matrix4 &matrix)
 SpringRuntime::SpringRuntime(VrmDocument &document) : m_document(document), m_definition(readSpringDefinition(document.scene()))
 {
 	const auto &scene = document.scene();
+	std::unordered_set<const cgltf_node *> springNodes;
+	for (const auto &chain : m_definition.chains)
+		for (const auto &joint : chain.joints) springNodes.insert(&scene.nodes[joint.node]);
+	for (const auto &collider : m_definition.colliders)
+	{
+		bool dynamic = false;
+		for (auto *node = &scene.nodes[collider.node]; node; node = node->parent)
+			if (springNodes.count(node)) { dynamic = true; break; }
+		m_dynamicColliders.push_back(dynamic);
+	}
+	m_worldColliders.resize(m_definition.colliders.size());
 	for (const auto &chain : m_definition.chains)
 	{
 		std::vector<JointState> states;
@@ -55,6 +67,13 @@ void SpringRuntime::update(float deltaTime, const Matrix4 &modelToWorld)
 	if (!std::isfinite(deltaTime) || deltaTime < 0) throw std::runtime_error("SpringBone delta time must be finite and nonnegative");
 	if (deltaTime > 0.1f) { reset(); deltaTime = 0; }
 	auto &scene = m_document.scene();
+	const auto colliderShape = [&](std::size_t index) {
+		const auto &collider = m_definition.colliders[index];
+		const auto matrix = modelToWorld * world(scene.nodes[collider.node]);
+		return SpringWorldCollider{point(matrix, collider.offset), point(matrix, collider.tail), collider.radius * maxScale(matrix)};
+	};
+	for (std::size_t index = 0; index < m_worldColliders.size(); ++index)
+		if (!m_dynamicColliders[index]) m_worldColliders[index] = colliderShape(index);
 	const auto worldToModel = Matrix4(modelToWorld).invert();
 	for (std::size_t chainIndex = 0; chainIndex < m_definition.chains.size(); ++chainIndex)
 	{
@@ -82,9 +101,7 @@ void SpringRuntime::update(float deltaTime, const Matrix4 &modelToWorld)
 			auto tail = integrateSpringTail(head, current, previous, direction, length, settings, deltaTime, scale);
 			if (deltaTime > 0) for (const auto colliderIndex : chain.colliders)
 			{
-				const auto &collider = m_definition.colliders[colliderIndex];
-				const auto matrix = modelToWorld * world(scene.nodes[collider.node]);
-				const SpringWorldCollider shape = {point(matrix, collider.offset), point(matrix, collider.tail), collider.radius * maxScale(matrix)};
+				const auto shape = m_dynamicColliders[colliderIndex] ? colliderShape(colliderIndex) : m_worldColliders[colliderIndex];
 				tail = collideSpringTail(head, tail, length, settings.radius * scale, shape, direction);
 			}
 			if (!std::isfinite(tail.x) || !std::isfinite(tail.y) || !std::isfinite(tail.z))

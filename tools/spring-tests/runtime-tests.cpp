@@ -27,8 +27,8 @@ struct Fixture
 			+ "\"nodes\":[{\"children\":[1]},{\"children\":[2],\"translation\":[0,1,0]},{\"translation\":[0,1,0]}],"
 			+ "\"extensions\":{\"VRMC_vrm\":{\"specVersion\":\"1.0\",\"humanoid\":{\"humanBones\":{\"head\":{\"node\":1}}}},"
 			+ "\"VRMC_springBone\":{\"specVersion\":\"1.0\",\"colliders\":[{\"node\":0,\"shape\":{\"sphere\":{\"offset\":[0.15,1.9,0],\"radius\":0.2}}},{\"node\":0,\"shape\":{\"capsule\":{}}}],"
-			+ "\"colliderGroups\":[{\"colliders\":[0]}],\"springs\":[{"
-			+ (center ? "\"center\":0," : "") + (collision ? "\"colliderGroups\":[0]," : "")
+			+ "\"colliderGroups\":[{\"colliders\":[0]},{\"colliders\":[1,0]}],\"springs\":[{"
+			+ (center ? "\"center\":0," : "") + (collision ? "\"colliderGroups\":[1,0]," : "")
 			+ "\"joints\":[{\"node\":1,\"hitRadius\":0.05,\"stiffness\":1,\"dragForce\":0.4,\"gravityDir\":[1,0,0],\"gravityPower\":"
 			+ (gravity ? "1" : "0") + "},{\"node\":2}]}]}}}";
 		std::string padded = json;
@@ -104,6 +104,9 @@ int main(int argc, char **argv)
 		worldRuntime.update(1.0f / 60, moved);
 		require((tail(worldSpace) - Vector3(0, 2, 0)).length() > 0.01f, "World-space root movement failed to create inertia");
 		fixture.write(false, true, true);
+		avatar::VrmDocument ordered(fixture.path);
+		const auto ordering = avatar::readSpringDefinition(ordered.scene());
+		require(ordering.chains.front().colliders == std::vector<std::size_t>({1, 0}), "Collider declaration order or deduplication was lost");
 		const auto unit = simulate(fixture, 1);
 		require((simulate(fixture, 0.25f) - unit).length() < 0.00001f, "Small uniform scale changed local spring motion");
 		require((simulate(fixture, 3) - unit).length() < 0.00001f, "Large uniform scale changed local spring motion");

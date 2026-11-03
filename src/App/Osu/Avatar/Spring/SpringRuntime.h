@@ -2,6 +2,7 @@
 #define MCOSU_SPRING_RUNTIME_H
 
 #include "SpringDefinition.h"
+#include "SpringMath.h"
 #include "Matrices.h"
 #include <vector>
 
@@ -28,6 +29,8 @@ private:
 	VrmDocument &m_document;
 	SpringDefinition m_definition;
 	std::vector<std::vector<JointState>> m_states;
+	std::vector<bool> m_dynamicColliders;
+	std::vector<SpringWorldCollider> m_worldColliders;
 };
 }
 

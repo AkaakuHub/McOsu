@@ -108,10 +108,10 @@ SpringDefinition readSpringDefinition(const cgltf_data &scene)
 		{
 			const auto value = index.get<std::size_t>();
 			if (value >= groups.size()) throw std::runtime_error("Spring references a missing collider group");
-			chain.colliders.insert(chain.colliders.end(), groups[value].begin(), groups[value].end());
+			for (const auto collider : groups[value])
+				if (std::find(chain.colliders.begin(), chain.colliders.end(), collider) == chain.colliders.end())
+					chain.colliders.push_back(collider);
 		}
-		std::sort(chain.colliders.begin(), chain.colliders.end());
-		chain.colliders.erase(std::unique(chain.colliders.begin(), chain.colliders.end()), chain.colliders.end());
 		result.chains.push_back(chain);
 	}
 	for (std::size_t index = 0; index < result.chains.size(); ++index)
