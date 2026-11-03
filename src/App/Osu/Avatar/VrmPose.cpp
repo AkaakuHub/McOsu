@@ -49,6 +49,7 @@ void VrmPose::recalibrate()
 {
 	m_calibrated = false;
 	m_scale = 0;
+	m_trackingFloor = 0;
 	m_hasArmTwist.fill(false);
 	for (auto &binding : m_trackerBindings) binding.calibrated = false;
 	m_locomotion.reset();
@@ -110,8 +111,20 @@ void VrmPose::update(const TrackingFrame &input)
 	{
 		if (m_scale == 0)
 		{
-			if (headPosition.y <= 0) return;
-			m_scale = headPosition.y / m_restEyes.y;
+			if (tracking.leftFoot.valid && tracking.rightFoot.valid)
+			{
+				const float measuredFeet = (tracking.leftFoot.matrix[13] + tracking.rightFoot.matrix[13]) * 0.5f;
+				const float restFeet = (position(m_restWorld[m_document.humanBones().at("leftFoot")]).y
+					+ position(m_restWorld[m_document.humanBones().at("rightFoot")]).y) * 0.5f;
+				if (headPosition.y <= measuredFeet || m_restEyes.y <= restFeet) return;
+				m_scale = (headPosition.y - measuredFeet) / (m_restEyes.y - restFeet);
+				m_trackingFloor = measuredFeet - restFeet * m_scale;
+			}
+			else
+			{
+				if (headPosition.y <= 0) return;
+				m_scale = headPosition.y / m_restEyes.y;
+			}
 		}
 		m_bodyYaw = headYaw;
 		m_calibrated = true;
@@ -151,7 +164,7 @@ void VrmPose::update(const TrackingFrame &input)
 	}
 	Matrix4 rotation, translation, scale, turn;
 	rotation.rotateY(m_bodyYaw * 180.0f / 3.14159265358979323846f);
-	translation.translate(headPosition.x, 0, headPosition.z);
+	translation.translate(headPosition.x, m_trackingFloor, headPosition.z);
 	scale.scale(m_scale);
 	turn.rotateY(180);
 	m_modelToTracking = translation * rotation * scale;
@@ -163,7 +176,7 @@ void VrmPose::update(const TrackingFrame &input)
 		m_bodyYaw = std::atan2(heading[8], heading[10]);
 		rotation.identity().rotateY(m_bodyYaw * 180.0f / 3.14159265358979323846f);
 		const auto offset = rotation * (position(m_restWorld[m_document.humanBones().at("hips")]) * m_scale);
-		translation.identity().translate(waistPose[12] - offset.x, 0, waistPose[14] - offset.z);
+		translation.identity().translate(waistPose[12] - offset.x, m_trackingFloor, waistPose[14] - offset.z);
 		m_modelToTracking = translation * rotation * scale;
 	}
 	const auto trackingToModel = Matrix4(m_modelToTracking).invert();

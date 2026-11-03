@@ -555,6 +555,7 @@ void OsuVR::onAvatarChange(UString oldValue, UString newValue)
 	}
 	catch (const std::exception &error)
 	{
+		debugLog("VRM avatar load failed: %s\n", error.what());
 		engine->showMessageError("VRM Avatar", error.what());
 	}
 }

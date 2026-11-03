@@ -1,0 +1,66 @@
+#include "VrmDocument.h"
+#include "VrmPose.h"
+#include "VrmTransforms.h"
+#include "cgltf.h"
+#include <iostream>
+#include <stdexcept>
+#include <cmath>
+
+using namespace avatar;
+
+Vector3 joint(VrmDocument &model, const VrmPose &pose, const std::string &name)
+{
+    return point(pose.modelToTracking(), position(world(model.scene().nodes[model.humanBones().at(name)])));
+}
+
+void check(bool condition, const char *message)
+{
+    if (!condition) throw std::runtime_error(message);
+}
+
+int main(int argc, char **argv)
+{
+    if (argc != 2) return 2;
+    try
+    {
+        VrmDocument model(argv[1]);
+        VrmPose pose(model);
+        TrackingFrame frame;
+        frame.deltaTime = 1.0f / 90;
+        frame.head.valid = frame.leftHand.valid = frame.rightHand.valid = true;
+        frame.waist.valid = frame.leftFoot.valid = frame.rightFoot.valid = true;
+        frame.leftElbow.valid = frame.rightElbow.valid = true;
+        const auto rest = [&](const char *name) { return position(world(model.scene().nodes[model.humanBones().at(name)])); };
+        const auto eyes = (rest("leftEye") + rest("rightEye")) * 0.5f;
+        const float scale = 1.6f / eyes.y;
+        const Vector3 offset(0, -0.75f, 0);
+        const auto input = [&](const char *name, TrackedPose &target) {
+            const auto p = rest(name) * scale + offset;
+            target.matrix.translate(p.x, p.y, p.z);
+            target.deviceId = name;
+        };
+        frame.head.matrix.translate(0, 0.85f, 0);
+        input("hips", frame.waist);
+        input("leftFoot", frame.leftFoot);
+        input("rightFoot", frame.rightFoot);
+        frame.leftHand.matrix.translate(-0.28f, 0.5f, -0.28f);
+        frame.rightHand.matrix.translate(0.28f, 0.5f, -0.28f);
+        frame.leftElbow.matrix.translate(-0.4f, 0.38f, -0.05f);
+        frame.rightElbow.matrix.translate(0.4f, 0.38f, -0.05f);
+        pose.update(frame);
+        check(std::abs(pose.modelToTracking()[13] + 0.75f) < 0.0001f, "Measured foot height did not correct floor");
+        check((joint(model, pose, "leftHand") - position(frame.leftHand.matrix)).length() < 0.001f, "Tracked elbow broke wrist target");
+        const auto shoulder = joint(model, pose, "leftUpperArm");
+        const auto axis = (joint(model, pose, "leftHand") - shoulder).normalize();
+        auto measured = position(frame.leftElbow.matrix) - shoulder;
+        measured = (measured - axis * measured.dot(axis)).normalize();
+        auto solved = joint(model, pose, "leftLowerArm") - shoulder;
+        solved = (solved - axis * solved.dot(axis)).normalize();
+        check(measured.dot(solved) > 0.999f, "Elbow bend plane ignored measured tracker");
+        frame.leftElbow.valid = false;
+        pose.update(frame);
+        check(std::isfinite(joint(model, pose, "leftLowerArm").y), "Elbow loss produced invalid pose");
+        std::cout << "Nonzero floor, measured elbow plane, wrist target and elbow loss passed\n";
+    }
+    catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }
+}

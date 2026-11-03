@@ -34,6 +34,7 @@ private:
 	Vector3 m_restEyes;
 	bool m_calibrated = false;
 	float m_scale = 0;
+	float m_trackingFloor = 0;
 	float m_bodyYaw = 0;
 	Vector3 m_previousHead;
 	struct TrackerBinding { bool calibrated = false; std::string deviceId; Matrix4 offset; };
