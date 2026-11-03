@@ -311,11 +311,12 @@ void OsuVR::drawVR(Graphics *g, Matrix4 &mvp, RenderTarget *screen)
 
 			float width = openvr->getPlayAreaSize().x;
 			float height = openvr->getPlayAreaSize().y;
+			const float floorHeight = m_avatar && m_avatar->hasCalibration() ? m_avatar->floorHeight() : 0;
 
-			vao.addVertex(width/2.0f, 0.0f, height/2.0f);
-			vao.addVertex(width/2.0f, 0.0f, -height/2.0f);
-			vao.addVertex(-width/2.0f, 0.0f, -height/2.0f);
-			vao.addVertex(-width/2.0f, 0.0f, height/2.0f);
+			vao.addVertex(width/2.0f, floorHeight, height/2.0f);
+			vao.addVertex(width/2.0f, floorHeight, -height/2.0f);
+			vao.addVertex(-width/2.0f, floorHeight, -height/2.0f);
+			vao.addVertex(-width/2.0f, floorHeight, height/2.0f);
 
 			g->setColor(0xff111111);
 			g->drawVAO(&vao);

@@ -28,6 +28,7 @@ public:
 	const Matrix4 &subjectTransform() const { return m_pose.modelToTracking(); }
 	float subjectHeight() const { return m_subjectHeight; }
 	bool hasCalibration() const { return m_pose.hasCalibration(); }
+	float floorHeight() const { return m_pose.modelToTracking()[13]; }
 
 private:
 	VrmDocument m_document;
