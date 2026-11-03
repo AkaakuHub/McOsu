@@ -20,6 +20,7 @@ public:
 
 	virtual void drawVR(Graphics *g, Matrix4 &mvp);
 	virtual void update(Vector2 cursorPos);
+	virtual void cancelInput() {m_bIsActive = false; m_bIsCursorInside = false;}
 
 	virtual void setPos(Vector2 pos) {m_vPos = pos;}
 	virtual void setPos(float x, float y) {m_vPos.x = x; m_vPos.y = y;}

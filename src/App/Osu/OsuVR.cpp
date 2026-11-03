@@ -575,6 +575,8 @@ void OsuVR::update()
 	if (!openvr->isHeadsetInUse() || (!leftTracked && !rightTracked))
 	{
 		cancelLayoutEdit();
+		for (auto *element : m_uiElements) element->cancelInput();
+		m_uiInputBlocked = true;
 		if (!m_bClickCheck) engine->onMouseLeftChange(false);
 		if (!m_bMenuCheck) engine->onKeyboardKeyUp(KEY_ESCAPE);
 		m_bClickCheck = m_bMenuCheck = true;
@@ -891,6 +893,23 @@ void OsuVR::update()
 	}
 	else
 		m_bScaleCheck = true;
+
+	const bool gripHeld = leftController->isButtonPressed(OpenVRController::BUTTON::BUTTON_GRIP)
+		|| rightController->isButtonPressed(OpenVRController::BUTTON::BUTTON_GRIP);
+	if (layoutEditable && (gripHeld || !m_bScaleCheck)) m_uiInputBlocked = true;
+	if (!gripHeld && leftController->getTrigger() < 0.1f && rightController->getTrigger() < 0.1f
+		&& !leftController->isButtonPressed(OpenVRController::BUTTON::BUTTON_STEAMVR_TOUCHPAD)
+		&& !rightController->isButtonPressed(OpenVRController::BUTTON::BUTTON_STEAMVR_TOUCHPAD)) m_uiInputBlocked = false;
+	if (m_uiInputBlocked)
+	{
+		if (!m_bClickCheck) engine->onMouseLeftChange(false);
+		m_bClickCheck = false;
+		m_bClickHeldStartedInScreen = false;
+		m_bIsUIActive = false;
+		for (auto *element : m_uiElements) element->cancelInput();
+		updateLayout();
+		return;
+	}
 
 	// handle clicking (trigger + touchpad click) (scaling has priority over clicking on the usage of the trigger button)
 	if (((leftController->getTrigger() > 0.95f || rightController->getTrigger() > 0.95f) && m_bScaleCheck) || leftController->isButtonPressed(OpenVRController::BUTTON::BUTTON_STEAMVR_TOUCHPAD) || rightController->isButtonPressed(OpenVRController::BUTTON::BUTTON_STEAMVR_TOUCHPAD))

@@ -135,6 +135,7 @@ private:
 	Vector2 m_vVirtualScreenSize;
 
 	bool m_bClickCheck;
+	bool m_uiInputBlocked = false;
 	bool m_bMenuCheck;
 
 	bool m_bScaleCheck;

@@ -17,6 +17,7 @@ public:
 
 	virtual void drawVR(Graphics *g, Matrix4 &mvp);
 	virtual void update(Vector2 cursorPos);
+	void cancelInput() override {OsuVRUIElement::cancelInput(); m_bClickCheck = true;}
 
 	typedef fastdelegate::FastDelegate0<> ButtonClickVoidCallback;
 	void setClickCallback(ButtonClickVoidCallback clickCallback) {m_clickVoidCallback = clickCallback;}
