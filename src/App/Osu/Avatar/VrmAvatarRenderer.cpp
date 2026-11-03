@@ -146,6 +146,15 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	if (frame.head.valid && frame.headsetInUse && engine->getTime() >= m_armLogTime)
 	{
 		m_armLogTime = engine->getTime() + 0.1;
+		const auto eye = [&](const char *name) {
+			return point(m_pose.modelToTracking(), position(world(m_document.scene().nodes[m_document.humanBones().at(name)])));
+		};
+		const auto eyes = (eye("leftEye") + eye("rightEye")) * 0.5f;
+		const auto hmd = position(frame.head.matrix);
+		debugLog("VRM eyes: hmd=(%.4f %.4f %.4f) avatar=(%.4f %.4f %.4f) error=%.4f scale=%.4f floor=%.4f\n",
+			hmd.x, hmd.y, hmd.z, eyes.x, eyes.y, eyes.z, (eyes - hmd).length(),
+			Vector3(m_pose.modelToTracking()[0], m_pose.modelToTracking()[1], m_pose.modelToTracking()[2]).length(),
+			m_pose.modelToTracking()[13]);
 		for (const std::string side : {"left", "right"})
 		{
 			const auto joint = [&](const char *name) {
