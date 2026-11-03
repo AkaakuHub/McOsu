@@ -68,6 +68,12 @@ int main(int argc, char **argv)
         frame.leftElbow.valid = false;
         pose.update(frame);
         check(std::isfinite(joint(model, pose, "leftLowerArm").y), "Elbow loss produced invalid pose");
+        frame.head.matrix[13] += 0.15f;
+        pose.update(frame);
+        check((pose.viewpoint() - position(frame.head.matrix)).length() < 0.0001f,
+            "Waist tracking pulled the first-person viewpoint away from the HMD");
+        frame.head.matrix[13] -= 0.15f;
+        pose.update(frame);
         const auto beforeWaist = joint(model, pose, "hips");
         frame.waist.matrix[12] += 0.05f;
         pose.update(frame);

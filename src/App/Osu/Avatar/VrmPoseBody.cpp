@@ -127,7 +127,7 @@ void VrmPose::solveTorso(const Matrix4 &headPose, Vector3 eyeTarget, bool fixedP
 		if (current.length() > 0 && solved.length() > 0) rotateBone(*chain[i], current, solved);
 	}
 	auto result = headPose;
-	const auto origin = position(world(head));
+	const auto origin = fixedPelvis ? target : position(world(head));
 	result[12] = origin.x; result[13] = origin.y; result[14] = origin.z;
 	setWorld(head, result);
 	if (!fixedPelvis)

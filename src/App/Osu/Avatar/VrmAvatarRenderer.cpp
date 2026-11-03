@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <chrono>
+#include <cstdio>
 
 ConVar osu_vr_avatar_waist_tracker("osu_vr_avatar_waist_tracker", "", FCVAR_NONE);
 ConVar osu_vr_avatar_left_foot_tracker("osu_vr_avatar_left_foot_tracker", "", FCVAR_NONE);
@@ -97,7 +98,7 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	{
 		m_trackerDevices = trackerDevices;
 		for (const auto &device : m_bodyTracking.devices())
-			debugLog("VRM tracker device: serial=%s controllerType=%s\n", device.serial.c_str(), device.controllerType.c_str());
+			std::printf("VRM tracker device: serial=%s controllerType=%s\n", device.serial.c_str(), device.controllerType.c_str());
 	}
 	frame.waist = body.waist;
 	frame.leftFoot = body.leftFoot;
@@ -131,12 +132,12 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		| (static_cast<int>(body.status[3]) << 18) | (static_cast<int>(body.status[4]) << 21);
 	if (mask != m_trackingMask)
 	{
-		debugLog("VRM tracking: inUse=%i head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
+		std::printf("VRM tracking: inUse=%i head=%i palmLeft=%i palmRight=%i handStatus=(%i %i) headPosition=(%.3f %.3f %.3f)\n",
 			frame.headsetInUse, frame.head.valid, frame.leftHand.valid, frame.rightHand.valid,
 			static_cast<int>(m_handTracking.status(HandSide::Left)), static_cast<int>(m_handTracking.status(HandSide::Right)),
 			tracking.head.matrix[12], tracking.head.matrix[13], tracking.head.matrix[14]);
 		m_trackingMask = mask;
-		debugLog("VRM body tracking: waist=%i leftFoot=%i rightFoot=%i leftElbow=%i rightElbow=%i status=(%i %i %i %i %i)\n",
+		std::printf("VRM body tracking: waist=%i leftFoot=%i rightFoot=%i leftElbow=%i rightElbow=%i status=(%i %i %i %i %i)\n",
 			frame.waist.valid, frame.leftFoot.valid, frame.rightFoot.valid, frame.leftElbow.valid, frame.rightElbow.valid,
 			static_cast<int>(body.status[0]), static_cast<int>(body.status[1]), static_cast<int>(body.status[2]),
 			static_cast<int>(body.status[3]), static_cast<int>(body.status[4]));
@@ -148,7 +149,7 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 		m_armLogTime = engine->getTime() + 1;
 		const auto eyes = m_pose.viewpoint();
 		const auto hmd = position(frame.head.matrix);
-		debugLog("VRM eyes: hmd=(%.4f %.4f %.4f) avatar=(%.4f %.4f %.4f) error=%.4f scale=%.4f floor=%.4f\n",
+		std::printf("VRM eyes: hmd=(%.4f %.4f %.4f) avatar=(%.4f %.4f %.4f) error=%.4f scale=%.4f floor=%.4f\n",
 			hmd.x, hmd.y, hmd.z, eyes.x, eyes.y, eyes.z, (eyes - hmd).length(),
 			Vector3(m_pose.modelToTracking()[0], m_pose.modelToTracking()[1], m_pose.modelToTracking()[2]).length(),
 			m_pose.modelToTracking()[13]);
@@ -161,17 +162,18 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 			const auto upper = (elbow - shoulder).normalize(), lower = (wrist - elbow).normalize();
 			const auto &input = side == "left" ? frame.leftHand : frame.rightHand;
 			const auto &elbowInput = side == "left" ? frame.leftElbow : frame.rightElbow;
-			debugLog("VRM arm: t=%.3f side=%s valid=%i shoulder=(%.4f %.4f %.4f) elbow=(%.4f %.4f %.4f) wrist=(%.4f %.4f %.4f) input=(%.4f %.4f %.4f) forward=(%.4f %.4f %.4f) bend=%.2f\n",
+			std::printf("VRM arm: t=%.3f side=%s valid=%i shoulder=(%.4f %.4f %.4f) elbow=(%.4f %.4f %.4f) wrist=(%.4f %.4f %.4f) input=(%.4f %.4f %.4f) forward=(%.4f %.4f %.4f) bend=%.2f\n",
 				engine->getTime(), side.c_str(), input.valid, shoulder.x, shoulder.y, shoulder.z,
 				elbow.x, elbow.y, elbow.z, wrist.x, wrist.y, wrist.z,
 				input.matrix[12], input.matrix[13], input.matrix[14], -input.matrix[8], -input.matrix[9], -input.matrix[10],
 				std::acos(std::max(-1.0f, std::min(1.0f, upper.dot(lower)))) * 180.0f / 3.141592654f);
 			if (elbowInput.valid)
-				debugLog("VRM elbow tracker: side=%s serial=%s measured=(%.4f %.4f %.4f) solvedError=%.4f\n",
+				std::printf("VRM elbow tracker: side=%s serial=%s measured=(%.4f %.4f %.4f) solvedError=%.4f\n",
 					side.c_str(), elbowInput.deviceId.c_str(), elbowInput.matrix[12], elbowInput.matrix[13], elbowInput.matrix[14],
 					(elbow - position(elbowInput.matrix)).length());
 		}
 	}
+	const auto springStarted = std::chrono::steady_clock::now();
 	if (frame.head.valid && frame.headsetInUse)
 		m_springs.update(static_cast<float>(engine->getFrameTime()), m_pose.modelToTracking());
 	else m_springs.reset();
@@ -182,13 +184,13 @@ void VrmAvatarRenderer::updateTracking(const TrackingFrame &tracking)
 	if (engine->getTime() >= m_performanceLogTime)
 	{
 		m_performanceLogTime = engine->getTime() + 1;
-		debugLog("VRM frame: frameMs=%.2f poseMs=%.2f springMs=%.2f skinMs=%.2f\n",
+		std::printf("VRM frame: frameMs=%.2f poseMs=%.2f springMs=%.2f skinMs=%.2f\n",
 			engine->getFrameTime() * 1000,
 			std::chrono::duration<double, std::milli>(posed - started).count(),
-			std::chrono::duration<double, std::milli>(sprung - posed).count(),
+			std::chrono::duration<double, std::milli>(sprung - springStarted).count(),
 			std::chrono::duration<double, std::milli>(skinned - sprung).count());
 		if (frame.head.valid && frame.headsetInUse)
-			debugLog("VRM viewpoint after springs: error=%.6f\n", (m_pose.viewpoint() - position(frame.head.matrix)).length());
+			std::printf("VRM viewpoint after springs: error=%.6f\n", (m_pose.viewpoint() - position(frame.head.matrix)).length());
 	}
 }
 
