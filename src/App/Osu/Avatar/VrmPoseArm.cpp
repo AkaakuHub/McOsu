@@ -127,7 +127,7 @@ void VrmPose::moveArm(const std::string &side, const Matrix4 &target, bool palmS
 	desiredUp = rotationBetween(desiredRotation * bindForward, forearmAxis) * desiredUp;
 	currentUp -= forearmAxis * currentUp.dot(forearmAxis);
 	desiredUp -= forearmAxis * desiredUp.dot(forearmAxis);
-	if (currentUp.length() > 0.0001f && desiredUp.length() > 0.0001f)
+	if (!elbow.valid && currentUp.length() > 0.0001f && desiredUp.length() > 0.0001f)
 	{
 		currentUp.normalize();
 		desiredUp.normalize();
