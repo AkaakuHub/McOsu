@@ -734,7 +734,7 @@ OsuOptionsMenu::OsuOptionsMenu(Osu *osu) : OsuScreenBackable(osu)
 		addCheckbox("Draw Laser in Menu", convar->getConVarByName("osu_vr_draw_laser_menu"));
 		addCheckbox("Draw Floor", convar->getConVarByName("osu_vr_draw_floor"));
 		addCheckbox("Draw Controller Models", convar->getConVarByName("vr_draw_controller_models"));
-		addCheckbox("Draw Lighthouse Models", convar->getConVarByName("vr_draw_lighthouse_models"));
+		addCheckbox("Draw Tracker / Lighthouse Models", convar->getConVarByName("vr_draw_lighthouse_models"));
 		addSpacer();
 		addCheckbox("Draw VR Game (3D)", "Only disable this if you want to play the flat version in VR.\nThat is, on the virtual flat screen with the mouse cursor.", convar->getConVarByName("osu_vr_draw_playfield"));
 		addCheckbox("Draw Desktop Game (2D)", "Disable this to increase VR performance (by not drawing the flat/desktop game additionally).", convar->getConVarByName("osu_vr_draw_desktop_playfield"));
