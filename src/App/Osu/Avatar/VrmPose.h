@@ -35,6 +35,8 @@ private:
 	bool m_calibrated = false;
 	float m_scale = 0;
 	float m_trackingFloor = 0;
+	Matrix4 m_filteredWaist;
+	double m_lastWaistTime = -1;
 	float m_bodyYaw = 0;
 	Vector3 m_previousHead;
 	struct TrackerBinding { bool calibrated = false; std::string deviceId; Matrix4 offset; };

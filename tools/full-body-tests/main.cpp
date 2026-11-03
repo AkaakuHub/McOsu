@@ -61,6 +61,13 @@ int main(int argc, char **argv)
         frame.leftElbow.valid = false;
         pose.update(frame);
         check(std::isfinite(joint(model, pose, "leftLowerArm").y), "Elbow loss produced invalid pose");
+        const auto beforeWaist = joint(model, pose, "hips");
+        frame.waist.matrix[12] += 0.05f;
+        pose.update(frame);
+        const float firstWaistStep = joint(model, pose, "hips").x - beforeWaist.x;
+        check(firstWaistStep > 0 && firstWaistStep < 0.05f, "Waist noise filter did not interpolate");
+        for (int step = 0; step < 90; ++step) pose.update(frame);
+        check(std::abs(joint(model, pose, "hips").x - beforeWaist.x - 0.05f) < 0.0001f, "Waist filter drifted away from measured pose");
         std::cout << "Nonzero floor, measured elbow plane, wrist target and elbow loss passed\n";
     }
     catch (const std::exception &error) { std::cerr << error.what() << '\n'; return 1; }

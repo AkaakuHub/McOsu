@@ -2,6 +2,7 @@
 #include "VrmDocument.h"
 #include "VrmTransforms.h"
 #include "cgltf.h"
+#include "Locomotion/LocomotionMath.h"
 #include <algorithm>
 
 namespace avatar
@@ -38,12 +39,23 @@ Matrix4 VrmPose::trackedBonePose(const TrackedPose &tracked, int index, const st
 	auto &binding = m_trackerBindings[index];
 	if (!binding.calibrated || binding.deviceId != tracked.deviceId)
 	{
+		if (index == 0) m_lastWaistTime = -1;
 		binding.offset = Matrix4(tracked.matrix).invert() * m_modelToTracking
 			* m_restWorld[m_document.humanBones().at(name)];
 		binding.deviceId = tracked.deviceId;
 		binding.calibrated = true;
 	}
-	return tracked.matrix * binding.offset;
+	auto result = tracked.matrix;
+	if (index == 0)
+	{
+		const double elapsed = m_trackingTime - m_lastWaistTime;
+		if (m_lastWaistTime >= 0 && elapsed > 0 && elapsed < 0.1
+			&& (position(result) - position(m_filteredWaist)).length() < 0.5f)
+			result = locomotion::interpolate(m_filteredWaist, result, 1.0f - std::exp(-static_cast<float>(elapsed) / 0.025f));
+		m_filteredWaist = result;
+		m_lastWaistTime = m_trackingTime;
+	}
+	return result * binding.offset;
 }
 
 void VrmPose::solveTorso(const Matrix4 &headPose, Vector3 eyeTarget, bool fixedPelvis)

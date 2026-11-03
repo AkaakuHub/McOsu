@@ -50,6 +50,7 @@ void VrmPose::recalibrate()
 	m_calibrated = false;
 	m_scale = 0;
 	m_trackingFloor = 0;
+	m_lastWaistTime = -1;
 	m_hasArmTwist.fill(false);
 	for (auto &binding : m_trackerBindings) binding.calibrated = false;
 	m_locomotion.reset();
