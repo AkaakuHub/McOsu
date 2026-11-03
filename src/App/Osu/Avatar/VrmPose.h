@@ -7,6 +7,7 @@
 #include "TrackingTypes.h"
 #include "Locomotion/FootLocomotion.h"
 #include <array>
+#include <deque>
 
 struct cgltf_node;
 
@@ -48,6 +49,11 @@ private:
 	std::array<bool, 2> m_hasArmTwist = {{false, false}};
 	std::array<Vector3, 2> m_palmAnchors;
 	Matrix4 m_modelToTracking;
+	struct StablePose { double time; Matrix4 model; std::vector<Matrix4> nodes; };
+	std::deque<StablePose> m_stablePoses;
+	double m_trackingTime = 0;
+	void rememberStablePose(const TrackingFrame &tracking, float speed);
+	void freezeStablePose();
 };
 }
 

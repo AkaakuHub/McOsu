@@ -6,6 +6,33 @@
 
 namespace avatar
 {
+void VrmPose::rememberStablePose(const TrackingFrame &tracking, float speed)
+{
+	if (speed > 0.6f || tracking.head.matrix[5] < 0.5f
+		|| tracking.head.matrix[13] < m_restEyes.y * m_scale * 0.65f) return;
+	StablePose pose;
+	pose.time = m_trackingTime;
+	pose.model = m_modelToTracking;
+	for (std::size_t index = 0; index < m_document.scene().nodes_count; ++index)
+		pose.nodes.emplace_back(m_document.scene().nodes[index].matrix);
+	m_stablePoses.push_back(std::move(pose));
+	while (m_stablePoses.size() > 1 && m_trackingTime - m_stablePoses.front().time > 0.4)
+		m_stablePoses.pop_front();
+}
+
+void VrmPose::freezeStablePose()
+{
+	if (!m_stablePoses.empty())
+	{
+		const auto &pose = m_stablePoses.front();
+		m_modelToTracking = pose.model;
+		for (std::size_t index = 0; index < pose.nodes.size(); ++index)
+			std::copy(pose.nodes[index].get(), pose.nodes[index].get() + 16, m_document.scene().nodes[index].matrix);
+	}
+	m_locomotion.reset();
+	m_hasFeet = false;
+}
+
 Matrix4 VrmPose::trackedBonePose(const TrackedPose &tracked, int index, const std::string &name)
 {
 	auto &binding = m_trackerBindings[index];

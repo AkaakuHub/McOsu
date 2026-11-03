@@ -111,12 +111,20 @@ int main(int argc, char **argv)
 			<< " maxHandDirectionError=" << maxHandDirectionError << " maxForearmStepDegrees=" << maxForearmStep << '\n';
 		if (maxEyeError > 0.0001f || maxHandError > 0.001f || maxHandDirectionError > 0.001f || maxForearmStep > 20)
 			throw std::runtime_error("Tracking targets were missed");
+		frame.head.matrix.identity().translate(0, 1.65f, 0);
+		for (int idle = 0; idle < 60; ++idle) pose.update(frame);
 		const auto beforeStandby = trackedBone(model, pose, "head");
+		for (int removal = 0; removal < 15; ++removal)
+		{
+			frame.head.matrix.identity().rotateX(100);
+			frame.head.matrix[13] = 0.5f;
+			pose.update(frame);
+		}
 		frame.headsetInUse = false;
 		frame.head.matrix.identity().translate(0.4f, 0.6f, 0.2f);
 		pose.update(frame);
 		if ((trackedBone(model, pose, "head") - beforeStandby).length() > 0.00001f)
-			throw std::runtime_error("Standby headset moved the avatar");
+			throw std::runtime_error("Standby did not restore the stable pose before headset removal");
 		frame.headsetInUse = true;
 		frame.head.matrix.identity().translate(0.2f, 1.8f, 0.3f);
 		pose.update(frame);

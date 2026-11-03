@@ -53,6 +53,7 @@ void VrmPose::recalibrate()
 	for (auto &binding : m_trackerBindings) binding.calibrated = false;
 	m_locomotion.reset();
 	m_hasFeet = false;
+	m_stablePoses.clear();
 }
 
 void VrmPose::moveLimb(const std::string &side, bool arm, Vector3 target, Vector3 bend)
@@ -79,17 +80,25 @@ void VrmPose::update(const TrackingFrame &input)
 	auto tracking = input;
 	if (!tracking.headsetInUse)
 	{
+		if (m_calibrated) freezeStablePose();
 		m_calibrated = false;
 		m_hasArmTwist.fill(false);
 		return;
 	}
-	if (!tracking.head.valid) return;
+	if (!tracking.head.valid)
+	{
+		if (m_calibrated) freezeStablePose();
+		m_calibrated = false;
+		return;
+	}
 	if (m_scale == 0 && (!tracking.leftHand.valid || !tracking.rightHand.valid)) return;
 	tracking.hasTrackingSpaceDelta = m_hasPendingSpaceDelta;
 	tracking.trackingSpaceDelta = m_pendingSpaceDelta;
 	m_hasPendingSpaceDelta = false;
 	const auto headPosition = position(tracking.head.matrix);
 	const float deltaTime = std::max(0.0f, std::min(0.05f, tracking.deltaTime));
+	m_trackingTime += deltaTime;
+	const float headSpeed = m_calibrated && deltaTime > 0 ? (headPosition - m_previousHead).length() / deltaTime : 0;
 	if (tracking.hasTrackingSpaceDelta)
 	{
 		m_previousHead = point(tracking.trackingSpaceDelta, m_previousHead);
@@ -169,6 +178,18 @@ void VrmPose::update(const TrackingFrame &input)
 	hipsWorld[12] += shift.x;
 	hipsWorld[13] += shift.y;
 	hipsWorld[14] += shift.z;
+	if (!tracking.waist.valid)
+	{
+		const float pitch = std::atan2(-headDelta[9], std::sqrt(headDelta[8] * headDelta[8] + headDelta[10] * headDelta[10]));
+		const float bend = std::max(-20.0f, std::min(55.0f, pitch * 180.0f / 3.14159265f * 0.65f));
+		Matrix4 torsoTilt;
+		torsoTilt.rotateX(bend);
+		const auto pelvisPosition = desiredEyes - rotatedEyeOffset - torsoTilt * (position(restHead) - position(world(hips)));
+		hipsWorld = torsoTilt * world(hips);
+		hipsWorld[12] = pelvisPosition.x;
+		hipsWorld[13] = pelvisPosition.y;
+		hipsWorld[14] = pelvisPosition.z;
+	}
 	if (tracking.waist.valid) hipsWorld = trackingToModel * waistPose;
 	else if (m_hasFeet)
 	{
@@ -221,5 +242,6 @@ void VrmPose::update(const TrackingFrame &input)
 		footWorld[12] = footPosition.x; footWorld[13] = footPosition.y; footWorld[14] = footPosition.z;
 		setWorld(foot, footWorld);
 	}
+	rememberStablePose(tracking, headSpeed);
 }
 }
