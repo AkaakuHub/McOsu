@@ -28,7 +28,7 @@ Vector3 collideSpringTail(Vector3 head, Vector3 tail, float length, float hitRad
 {
 	const auto segment = collider.end - collider.start;
 	const float squaredLength = segment.dot(segment);
-	const float along = squaredLength > 0 ? std::max(0.0f, std::min(1.0f, (tail - collider.start).dot(segment) / squaredLength)) : 0;
+	const float along = squaredLength > 0 ? std::max(0.0f, std::min(1.0f, (head - collider.start).dot(segment) / squaredLength)) : 0;
 	const auto closest = collider.start + segment * along;
 	auto delta = tail - closest;
 	const float radius = collider.radius + hitRadius;

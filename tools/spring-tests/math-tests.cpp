@@ -29,6 +29,9 @@ int main()
 			require(tail.x > pointTail.x, "Joint hit radius was omitted from collision");
 		}
 		const avatar::SpringWorldCollider collapsed = {current, current, 0.2f};
+		const avatar::SpringWorldCollider longCapsule = {Vector3(0.1f, -0.2f, 0), Vector3(0.1f, 2, 0), 0.2f};
+		const auto projected = avatar::collideSpringTail(head, current, 1, 0.05f, longCapsule, rest);
+		require((projected - current).length() < 0.000001f, "Capsule projection differs from UniVRM head-based collision");
 		const auto coincident = avatar::collideSpringTail(head, current, 1, 0.05f, collapsed, rest);
 		require(std::isfinite(coincident.x) && std::abs(coincident.length() - 1) < 0.000001f, "Coincident collider produced an invalid tail");
 		std::cout << "Spring inertia, zero time, drag, sphere, capsule and length tests passed\n";
