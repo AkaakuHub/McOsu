@@ -16,6 +16,7 @@ class OsuBeatmap;
 
 class Shader;
 class RenderTarget;
+class OpenVRController;
 namespace avatar { class VrmAvatarRenderer; }
 
 class OsuVRUIElement;
@@ -65,6 +66,7 @@ private:
 	void drawVRCursors(Graphics *g, Matrix4 &mvp);
 
 	void updateLayout();
+	void movePanelWithJoystick(OpenVRController *controller, Matrix4 &relativePanel);
 
 	void save();
 	void resetMatrices();

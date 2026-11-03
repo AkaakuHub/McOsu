@@ -33,6 +33,7 @@
 #include <cstring>
 #include <iomanip>
 #include <limits>
+#include <cmath>
 #include "OsuVRUISlider.h"
 
 ConVar osu_vr_matrix_screen("osu_vr_matrix_screen");
@@ -41,6 +42,7 @@ ConVar osu_vr_avatar_calibrate("osu_vr_avatar_calibrate");
 ConVar osu_vr_matrix_playfield("osu_vr_matrix_playfield");
 ConVar osu_vr_reset_matrices("osu_vr_reset_matrices");
 ConVar osu_vr_layout_lock("osu_vr_layout_lock", false, FCVAR_NONE);
+ConVar osu_vr_panel_joystick_speed("osu_vr_panel_joystick_speed", 0.8f, FCVAR_NONE);
 
 ConVar osu_vr_screen_scale("osu_vr_screen_scale", 1.64613f, FCVAR_NONE);
 ConVar osu_vr_playfield_scale("osu_vr_playfield_scale", 0.945593f, FCVAR_NONE);
@@ -771,10 +773,14 @@ void OsuVR::update()
 				if (!m_bMovingScreenCheck)
 				{
 					if (m_bIsRightControllerMovingScreen)
+					{
+						movePanelWithJoystick(rightController, m_screenMatrixBackup);
 						m_screenMatrix = rightController->getMatrixPose() * m_screenMatrixBackup;
+					}
 					else
 					{
 						m_bMovingPlayfieldAllow = false;
+						movePanelWithJoystick(rightController, m_playfieldMatrixBackup);
 						m_playfieldMatrix = rightController->getMatrixPose() * m_playfieldMatrixBackup;
 					}
 				}
@@ -812,10 +818,14 @@ void OsuVR::update()
 				if (!m_bMovingPlayfieldCheck)
 				{
 					if (!m_bIsLeftControllerMovingScreen)
+					{
+						movePanelWithJoystick(leftController, m_playfieldMatrixBackup);
 						m_playfieldMatrix = leftController->getMatrixPose() * m_playfieldMatrixBackup;
+					}
 					else
 					{
 						m_bMovingScreenAllow = false;
+						movePanelWithJoystick(leftController, m_screenMatrixBackup);
 						m_screenMatrix = leftController->getMatrixPose() * m_screenMatrixBackup;
 					}
 				}
@@ -1036,6 +1046,29 @@ void OsuVR::updateLayout()
 	m_scrubbingSlider->setPos(m_vVirtualScreenSize.x/2.0f - m_scrubbingSlider->getSize().x/2.0f, m_vVirtualScreenSize.y - osu_vr_ui_offset.getFloat());
 	m_offsetDownButton->setPos(m_vVirtualScreenSize.x/2.0f - m_offsetDownButton->getSize().x - gap/2.0f, m_scrubbingSlider->getPos().y - m_scrubbingSlider->getSize().y - gap);
 	m_offsetUpButton->setPos(m_vVirtualScreenSize.x/2.0f + gap/2.0f, m_scrubbingSlider->getPos().y - m_scrubbingSlider->getSize().y - gap);
+}
+
+void OsuVR::movePanelWithJoystick(OpenVRController *controller, Matrix4 &relativePanel)
+{
+	auto input = controller->getJoystick();
+	const float magnitude = input.length();
+	const float speed = osu_vr_panel_joystick_speed.getFloat();
+	const float frameTime = static_cast<float>(engine->getFrameTime());
+	if (!std::isfinite(magnitude) || magnitude <= 0.2f || !std::isfinite(speed) || speed <= 0
+		|| !std::isfinite(frameTime) || frameTime <= 0) return;
+	input *= (std::min(1.0f, magnitude) - 0.2f) / (0.8f * magnitude);
+	const auto controllerPose = controller->getMatrixPose();
+	auto panel = controllerPose * relativePanel;
+	const auto right = Vector3(panel[0], panel[1], panel[2]).normalize();
+	auto normal = Vector3(panel[8], panel[9], panel[10]).normalize();
+	Matrix4 head;
+	if (!openvr->getTrackingPose(OpenVRInterface::TrackingDevice::Head, head)) return;
+	if (normal.dot(Vector3(head[12] - panel[12], head[13] - panel[13], head[14] - panel[14])) < 0) normal = -normal;
+	const auto offset = (right * input.x - normal * input.y) * (speed * std::min(frameTime, 0.05f));
+	panel[12] += offset.x;
+	panel[13] += offset.y;
+	panel[14] += offset.z;
+	relativePanel = Matrix4(controllerPose).invert() * panel;
 }
 
 void OsuVR::save()
