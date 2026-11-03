@@ -38,6 +38,8 @@ int main()
         auto *input = reinterpret_cast<VR_IVRInput_FnTable *>(VR_GetGenericInterface("FnTable:IVRInput_011", &error));
         if (!input || error != EVRInitError_VRInitError_None) throw std::runtime_error("Input interface is unavailable");
         json output = json::array();
+        std::array<TrackedDevicePose_t, 64> poses = {};
+        system->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseStanding, 0, poses.data(), poses.size());
         for (uint32_t device = 0; device < 64; ++device)
         {
             if (!system->IsTrackedDeviceConnected(device)) continue;
@@ -45,6 +47,9 @@ int main()
             auto role = system->GetControllerRoleForTrackedDeviceIndex(device);
             json item = {{"device", device}, {"class", system->GetTrackedDeviceClass(device)}, {"role", role},
                 {"activity", system->GetTrackedDeviceActivityLevel(device)},
+                {"serial", property(*system, device, ETrackedDeviceProperty_Prop_SerialNumber_String)},
+                {"poseValid", poses[device].bPoseIsValid}, {"trackingResult", poses[device].eTrackingResult},
+                {"pose", matrix(poses[device].mDeviceToAbsoluteTracking)},
                 {"model", property(*system, device, ETrackedDeviceProperty_Prop_ModelNumber_String)},
                 {"renderModel", model}, {"controllerType", property(*system, device, ETrackedDeviceProperty_Prop_ControllerType_String)},
                 {"inputProfile", property(*system, device, ETrackedDeviceProperty_Prop_InputProfilePath_String)}};
