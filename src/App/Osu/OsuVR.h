@@ -140,6 +140,8 @@ private:
 
 	bool m_bScaleCheck;
 	bool m_bScaleAllow = false;
+	bool m_layoutSavePending = false;
+	double m_layoutSaveTime = 0;
 	bool m_bIsPlayerScalingPlayfield;
 	float m_fScaleBackup;
 	float m_fDefaultScreenScale;

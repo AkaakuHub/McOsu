@@ -569,10 +569,12 @@ void OsuVR::update()
 	OpenVRController *primaryController = openvr->getController();
 	OpenVRController *rightController = openvr->getRightController();
 	OpenVRController *leftController = openvr->getLeftController();
-	Matrix4 leftPose, rightPose;
+	Matrix4 leftPose, rightPose, headPose;
 	const bool leftTracked = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::LeftHand, leftPose);
 	const bool rightTracked = openvr->getTrackingPose(OpenVRInterface::TrackingDevice::RightHand, rightPose);
-	if (!openvr->isHeadsetInUse() || (!leftTracked && !rightTracked))
+	if (!openvr->isHeadsetInUse()
+		|| !openvr->getTrackingPose(OpenVRInterface::TrackingDevice::Head, headPose)
+		|| (!leftTracked && !rightTracked))
 	{
 		cancelLayoutEdit();
 		for (auto *element : m_uiElements) element->cancelInput();
@@ -792,8 +794,8 @@ void OsuVR::update()
 		{
 			m_bMovingScreenCheck = true;
 
-			// immediately save the changes
-			save();
+			m_layoutSavePending = true;
+			m_layoutSaveTime = engine->getTime() + 1.0;
 		}
 		else
 			m_bMovingScreenAllow = true;
@@ -837,8 +839,8 @@ void OsuVR::update()
 		{
 			m_bMovingPlayfieldCheck = true;
 
-			// immediately save the changes
-			save();
+			m_layoutSavePending = true;
+			m_layoutSaveTime = engine->getTime() + 1.0;
 		}
 		else
 			m_bMovingPlayfieldAllow = true;
@@ -887,12 +889,16 @@ void OsuVR::update()
 		{
 			m_bScaleCheck = true;
 
-			// immediately save the changes
-			save();
+			m_layoutSavePending = true;
+			m_layoutSaveTime = engine->getTime() + 1.0;
 		}
 	}
 	else
 		m_bScaleCheck = true;
+
+	if (m_layoutSavePending && m_bMovingScreenCheck && m_bMovingPlayfieldCheck && m_bScaleCheck
+		&& engine->getTime() >= m_layoutSaveTime)
+		save();
 
 	const bool gripHeld = leftController->isButtonPressed(OpenVRController::BUTTON::BUTTON_GRIP)
 		|| rightController->isButtonPressed(OpenVRController::BUTTON::BUTTON_GRIP);
@@ -1141,6 +1147,7 @@ void OsuVR::save()
 
 void OsuVR::rememberLayout()
 {
+	m_layoutSavePending = false;
 	m_savedScreenMatrix = m_screenMatrix;
 	m_savedPlayfieldMatrix = m_playfieldMatrix;
 	m_savedScreenScale = osu_vr_screen_scale.getFloat();
@@ -1149,13 +1156,14 @@ void OsuVR::rememberLayout()
 
 void OsuVR::cancelLayoutEdit()
 {
-	if (!m_bMovingScreenCheck || !m_bMovingPlayfieldCheck || !m_bScaleCheck)
+	if (m_layoutSavePending || !m_bMovingScreenCheck || !m_bMovingPlayfieldCheck || !m_bScaleCheck)
 	{
 		m_screenMatrix = m_savedScreenMatrix;
 		m_playfieldMatrix = m_savedPlayfieldMatrix;
 		osu_vr_screen_scale.setValue(m_savedScreenScale);
 		osu_vr_playfield_scale.setValue(m_savedPlayfieldScale);
 	}
+	m_layoutSavePending = false;
 	m_bMovingScreenCheck = m_bMovingPlayfieldCheck = m_bScaleCheck = true;
 	m_bMovingScreenAllow = m_bMovingPlayfieldAllow = false;
 	m_bScaleAllow = false;
